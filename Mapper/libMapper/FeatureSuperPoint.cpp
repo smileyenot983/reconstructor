@@ -219,10 +219,10 @@ namespace reconstructor::Core
             FeatDesc descFloat(descTensor.data_ptr<float>(), descTensor.data_ptr<float>() + descTensor.numel());
 
             // normalize desc:
-            auto descSum = std::accumulate(descFloat.desc.begin(), descFloat.desc.end(), 0);
+            double descNorm = descFloat.norm();
             for (size_t idx = 0; idx < descFloat.desc.size(); ++idx)
             {
-                descFloat.desc[idx] /= descSum;
+                descFloat.desc[idx] /= descNorm;
             }
 
             descriptorsFiltered.push_back(descFloat);

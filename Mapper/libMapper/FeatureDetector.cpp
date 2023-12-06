@@ -27,6 +27,7 @@ namespace reconstructor::Core
             features[featIdx].featCoord.x = keypoints[featIdx].pt.x;
             features[featIdx].featCoord.y = keypoints[featIdx].pt.y;
             features[featIdx].featDesc.desc.resize(descSize);
+            features[featIdx].featDesc.type = descriptors.type();
             descriptors.row(featIdx).copyTo(features[featIdx].featDesc.desc);
         }
     }

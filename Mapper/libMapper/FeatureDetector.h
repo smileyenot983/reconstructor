@@ -18,8 +18,7 @@ namespace reconstructor::Core
 
         FeatCoord(int x, int y)
             : x(x), y(y)
-        {
-        }
+        {}
 
         int x;
         int y;
@@ -35,9 +34,21 @@ namespace reconstructor::Core
         template <typename InputIterator>
         FeatDesc(InputIterator first, InputIterator last)
             : desc(first, last)
+        {}
+
+        // calculates l2 norm of descriptor
+        double norm()
         {
+            double sum = 0.0;
+            for(const auto& descElem : desc)
+            {
+                sum += descElem*descElem;
+            }
+            return sqrt(sum);
         }
+
         std::vector<float> desc;
+        int type = CV_32F;
     };
 
     /*
@@ -47,9 +58,9 @@ namespace reconstructor::Core
     {
         Feature(FeatCoord featCoord, FeatDesc featDesc)
             : featCoord(featCoord), featDesc(featDesc)
-        {
-        }
+        {}
         Feature() {}
+
         FeatCoord featCoord;
         FeatDesc featDesc;
     };
