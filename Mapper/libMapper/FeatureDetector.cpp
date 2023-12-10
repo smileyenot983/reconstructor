@@ -9,8 +9,8 @@ namespace reconstructor::Core
         orbDetector = cv::ORB::create();
     }
 
-    void FeatureORB::detect(const cv::Mat &img,
-                            std::vector<Feature> &features)
+    void FeatureORB::detect(const cv::Mat& img,
+                            std::vector<FeaturePtr<>>& features)
     {
         std::cout << "img.size: " << img.size << std::endl;
 
@@ -19,16 +19,19 @@ namespace reconstructor::Core
 
         orbDetector->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
 
-        features.resize(keypoints.size());
+        // features.resize(keypoints.size());
         int descSize = descriptors.size[1];
 
+        descriptors.convertTo(descriptors, CV_32F);
         for (size_t featIdx = 0; featIdx < keypoints.size(); ++featIdx)
         {
-            features[featIdx].featCoord.x = keypoints[featIdx].pt.x;
-            features[featIdx].featCoord.y = keypoints[featIdx].pt.y;
-            features[featIdx].featDesc.desc.resize(descSize);
-            features[featIdx].featDesc.type = descriptors.type();
-            descriptors.row(featIdx).copyTo(features[featIdx].featDesc.desc);
+            FeaturePtr<> feat = std::make_shared<Feature<>>(); 
+            feat->featCoord.x = keypoints[featIdx].pt.x;
+            feat->featCoord.y = keypoints[featIdx].pt.y;
+            feat->featDesc.desc.resize(descSize);
+
+            descriptors.row(featIdx).copyTo(feat->featDesc.desc);
+            features.push_back(feat);
         }
     }
 

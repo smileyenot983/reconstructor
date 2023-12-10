@@ -9,15 +9,19 @@ message(STATUS ${PROJECT_SOURCE_DIR})
 set(HEADERS
         libMapper/BasicFlags.h
         libMapper/utils.h
+        libMapper/datatypes.h
         libMapper/FeatureDetector.h
         libMapper/FeatureSuperPoint.h
         libMapper/FeatureMatcher.h
+        libMapper/FeatureMatcherSuperglue.h
 )
 
 set(SOURCES
-        libMapper/FeatureDetector.cpp
         libMapper/utils.cpp        
-        libMapper/FeatureSuperPoint.cpp        
+        libMapper/FeatureDetector.cpp
+        libMapper/FeatureSuperPoint.cpp 
+        libMapper/FeatureMatcher.cpp 
+        libMapper/FeatureMatcherSuperglue.cpp      
 )
 
 find_package(OpenCV 4.2 REQUIRED)

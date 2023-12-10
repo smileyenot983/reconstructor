@@ -11,12 +11,12 @@ namespace reconstructor::Utils
 {
 
 void visualizeKeypoints(const cv::Mat& img,
-                        const std::vector<reconstructor::Core::FeatCoord>& featureCoords,
+                        const std::vector<reconstructor::Core::FeatCoord<>>& featureCoords,
                         bool saveImage = false,
                         bool showImage = true);
 
 void visualizeKeypoints(const cv::Mat& img,
-                        const std::vector<reconstructor::Core::Feature>& features,
+                        const std::vector<reconstructor::Core::Feature<>>& features,
                         bool saveImage = false,
                         bool showImage = true);
 

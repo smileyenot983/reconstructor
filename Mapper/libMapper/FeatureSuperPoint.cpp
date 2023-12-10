@@ -5,31 +5,14 @@
 
 namespace reconstructor::Core
 {
-
-    /*
-    Adds feature confidence in addition to coords
-    */
-    struct FeatCoordConf : FeatCoord
-    {
-        FeatCoordConf() {}
-
-        FeatCoordConf(const int x, const int y, const double conf)
-            : FeatCoord(x, y), conf(conf)
-        {
-        }
-
-        double conf;
-    };
-
-    bool kpComp(FeatCoordConf kp1, FeatCoordConf kp2)
+    bool kpComp(FeatCoordConf<> kp1, FeatCoordConf<> kp2)
     {
         return kp1.conf > kp2.conf;
     }
-
     /*
     applies non-maxima suppression to remove repeating keypoints
     */
-    std::vector<FeatCoordConf> nmsFast(std::vector<FeatCoordConf> &keypoints,
+    std::vector<FeatCoordConf<>> nmsFast(std::vector<FeatCoordConf<>> &keypoints,
                                        const int imgHeight,
                                        const int imgWidth,
                                        const int distThresh = 4)
@@ -68,7 +51,7 @@ namespace reconstructor::Core
             }
         }
 
-        std::vector<FeatCoordConf> keypointsFiltered;
+        std::vector<FeatCoordConf<>> keypointsFiltered;
         // find survived keypoints, i.e. where grid value = 1 after filtering
         for (size_t pxY = 0; pxY < grid.size(); ++pxY)
         {
@@ -106,13 +89,12 @@ namespace reconstructor::Core
     }
 
     /*
-    keypoints should be postprocessed after network predictions
+    Converts squeezed(h/8, w/8, 64) neural network output to original image shape(h,w,1)
+    where values represent point confidence
     */
-    std::vector<FeatCoord> processKeypoints(torch::Tensor keypointTensor,
-                                            const int imgHeight,
-                                            const int imgWidth,
-                                            const double confThresh,
-                                            const int borderSize)
+    torch::Tensor extractHeatMap(const torch::Tensor& keypointTensor,
+                        const int imgHeight,
+                        const int imgWidth)
     {
         // 1. apply softmax over depth to get probs
         auto dense = at::exp(keypointTensor);
@@ -155,7 +137,21 @@ namespace reconstructor::Core
         assert(imgHeight == heatMap.sizes()[0]);
         assert(imgWidth == heatMap.sizes()[1]);
 
-        std::vector<FeatCoordConf> keypointCoordConfs;
+        return heatMap;
+    }
+
+    /*
+    keypoints should be postprocessed after network predictions
+    */
+    std::vector<FeatCoordConf<>> processKeypoints(const torch::Tensor& keypointTensor,
+                                                const int imgHeight,
+                                                const int imgWidth,
+                                                const double confThresh,
+                                                const int borderSize)
+    {
+        auto heatMap = extractHeatMap(keypointTensor, imgHeight, imgWidth);
+
+        std::vector<FeatCoordConf<>> keypointCoordConfs;
 
         for (size_t i = 0; i < imgHeight; ++i)
         {
@@ -164,16 +160,11 @@ namespace reconstructor::Core
                 auto kpConfidence = heatMap[i][j].item<float>();
                 if (kpConfidence >= confThresh)
                 {
-                    FeatCoordConf keypointCoordConf(j, i, kpConfidence);
+                    FeatCoordConf<> keypointCoordConf(j, i, kpConfidence);
                     keypointCoordConfs.push_back(keypointCoordConf);
                 }
             }
         }
-
-        // if (verbose)
-        // {
-        //     std::cout << "keyPoints found: " << keypointCoordConfs.size() << std::endl;
-        // }
 
         // std::vector<int> filteredIds;
         auto keypointsFiltered = nmsFast(keypointCoordConfs, imgHeight, imgWidth);
@@ -181,24 +172,25 @@ namespace reconstructor::Core
         LOG_MSG("keypointsFiltered.size(): " + std::to_string(keypointsFiltered.size()));
 
         auto keypointsNoBorder = removeBorderKeypoints(keypointsFiltered,
-                                                       imgHeight,
-                                                       imgWidth,
-                                                       borderSize);
+                                                        imgHeight,
+                                                        imgWidth,
+                                                        borderSize);
 
         // remove confidence from keypoints as it is not needed now
-        std::vector<FeatCoord> featCoords;
-        for (const auto &keypoint : keypointsNoBorder)
-        {
-            FeatCoord featCoord(keypoint.x, keypoint.y);
-            featCoords.push_back(featCoord);
-        }
+        // std::vector<FeatCoord<>> featCoords;
+        // for (const auto &keypoint : keypointsNoBorder)
+        // {
+        //     FeatCoord featCoord(keypoint.x, keypoint.y);
+        //     featCoords.push_back(featCoord);
+        // }
 
-        return featCoords;
+        return keypointsNoBorder;
     }
 
     // extracts descriptors on a given keypoints positions
+    template <typename keypointType>
     std::vector<FeatDesc> processDescriptors(const torch::Tensor &descriptors,
-                                             std::vector<FeatCoord> keypoints)
+                                             std::vector<keypointType> keypoints)
     {
         // convert keypoint positions from image coords to compressed coords(/8)
         std::vector<FeatDesc> descriptorsFiltered;
@@ -247,7 +239,7 @@ namespace reconstructor::Core
     img should be float, single channel, i.e. CV_32FC1
     */
     void FeatureSuperPoint::detect(const cv::Mat &img,
-                                   std::vector<Feature> &features)
+                                   std::vector<FeaturePtr<>> &features)
     {
         auto imgTensor = torch::from_blob(img.data, {1, img.rows, img.cols}, torch::kFloat32).unsqueeze(0);
 
@@ -277,7 +269,9 @@ namespace reconstructor::Core
 
         for (size_t i = 0; i < keypointsProcessed.size(); ++i)
         {
-            Feature feat(keypointsProcessed[i], descriptorsProcessed[i]);
+            // FeatureConf<> feat(keypointsProcessed[i], descriptorsProcessed[i]);
+            FeaturePtr<> feat = std::make_shared<FeatureConf<>>(keypointsProcessed[i],
+                                                                descriptorsProcessed[i]);
             features.push_back(feat);
         }
     }

@@ -4,7 +4,7 @@ namespace reconstructor::Utils
 {
 
 void visualizeKeypoints(const cv::Mat& img,
-                        const std::vector<reconstructor::Core::FeatCoord>& featureCoords,
+                        const std::vector<reconstructor::Core::FeatCoord<>>& featureCoords,
                         bool saveImage,
                         bool showImage)
 {
@@ -15,7 +15,7 @@ void visualizeKeypoints(const cv::Mat& img,
     cv::Mat imgKeypoints = img.clone();
 
     // multiply by 255, because it was divided previously
-    if(img.type())
+    // if(img.type())
     // for(size_t i=0;i<imgKeypoints.rows;++i)
     // {
     //     for(size_t j=0; j<imgKeypoints.cols; ++j)
@@ -44,11 +44,11 @@ void visualizeKeypoints(const cv::Mat& img,
 }
 
 void visualizeKeypoints(const cv::Mat& img,
-                        const std::vector<reconstructor::Core::Feature>& features,
+                        const std::vector<reconstructor::Core::Feature<>>& features,
                         bool saveImage,
                         bool showImage)
 {
-    std::vector<reconstructor::Core::FeatCoord> featureCoords;
+    std::vector<reconstructor::Core::FeatCoord<int>> featureCoords;
     for(const auto& feat : features)
     {
         featureCoords.push_back(feat.featCoord);

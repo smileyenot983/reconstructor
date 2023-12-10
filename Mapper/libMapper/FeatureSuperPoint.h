@@ -18,7 +18,7 @@ namespace reconstructor::Core
         FeatureSuperPoint(const std::string &networkPath);
 
         void detect(const cv::Mat &img,
-                    std::vector<Feature> &features) override;
+                    std::vector<FeaturePtr<>> &features) override;
 
         cv::Mat prepImg(const cv::Mat &img) override;
 

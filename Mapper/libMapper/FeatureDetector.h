@@ -5,6 +5,8 @@
 #include "opencv2/features2d.hpp"
 // #include "opencv2/xfeatures2d.hpp"
 
+#include "datatypes.h"
+
 namespace cv
 {
     class Mat;
@@ -12,59 +14,6 @@ namespace cv
 
 namespace reconstructor::Core
 {
-    struct FeatCoord
-    {
-        FeatCoord() {}
-
-        FeatCoord(int x, int y)
-            : x(x), y(y)
-        {}
-
-        int x;
-        int y;
-    };
-
-    // TODO:
-    // check how initialization using constructor is done;
-    struct FeatDesc
-    {
-        FeatDesc() {}
-
-        // the only way to call vector constructor using iterators
-        template <typename InputIterator>
-        FeatDesc(InputIterator first, InputIterator last)
-            : desc(first, last)
-        {}
-
-        // calculates l2 norm of descriptor
-        double norm()
-        {
-            double sum = 0.0;
-            for(const auto& descElem : desc)
-            {
-                sum += descElem*descElem;
-            }
-            return sqrt(sum);
-        }
-
-        std::vector<float> desc;
-        int type = CV_32F;
-    };
-
-    /*
-    Struct for storing feature with coords and descriptor
-    */
-    struct Feature
-    {
-        Feature(FeatCoord featCoord, FeatDesc featDesc)
-            : featCoord(featCoord), featDesc(featDesc)
-        {}
-        Feature() {}
-
-        FeatCoord featCoord;
-        FeatDesc featDesc;
-    };
-
     /*
     Base class for feature detection:
     @param[in] image - input image, for detecting features
@@ -76,8 +25,11 @@ namespace reconstructor::Core
     public:
         // FeatureDetector();
 
+        // virtual void detect(const cv::Mat &img,
+        //                     std::vector<FeatureConf<>> &features) = 0;
+
         virtual void detect(const cv::Mat &img,
-                            std::vector<Feature> &features) = 0;
+                            std::vector<FeaturePtr<>> &features) = 0;
 
         // preprocess image resize/change data type
         virtual cv::Mat prepImg(const cv::Mat &img) = 0;
@@ -94,7 +46,7 @@ namespace reconstructor::Core
         FeatureORB();
 
         void detect(const cv::Mat &img,
-                    std::vector<Feature> &features) override;
+                    std::vector<FeaturePtr<>> &features) override;
 
         cv::Mat prepImg(const cv::Mat &img) override;
 
