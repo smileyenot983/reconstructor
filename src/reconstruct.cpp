@@ -124,6 +124,10 @@ int main()
     detector->detect(imgPrepared1, features1);
     detector->detect(imgPrepared2, features2);
 
+    std::shared_ptr<reconstructor::Core::FeatureConf<>> featConf = std::dynamic_pointer_cast<reconstructor::Core::FeatureConf<>>(features1[0]);
+    std::shared_ptr<reconstructor::Core::FeatureConf<>> featConf1 = std::dynamic_pointer_cast<reconstructor::Core::FeatureConf<>>(features1[1]);
+    std::shared_ptr<reconstructor::Core::FeatureConf<>> featConf2 = std::dynamic_pointer_cast<reconstructor::Core::FeatureConf<>>(features1[2]);
+
     std::cout << "n features img1: " << features1.size() << std::endl;
     std::cout << "n features img2: " << features2.size() << std::endl;
     // std::cout << "features1[0].featDesc.desc[0]: " << features1[0].featDesc.desc[0] << std::endl;
@@ -131,22 +135,27 @@ int main()
     timeLogger->endEvent();
 
     timeLogger->startEvent("featMatching");
-    // std::unique_ptr<reconstructor::Core::FeatureMatcher> featMatcher = std::make_unique<reconstructor::Core::FeatureMatcherSuperglue>("../models/superglue_model.zip");
-    std::unique_ptr<reconstructor::Core::FeatureMatcher> featMatcher = std::make_unique<reconstructor::Core::FlannMatcher>();
+    std::unique_ptr<reconstructor::Core::FeatureMatcher> featMatcher = std::make_unique<reconstructor::Core::FeatureMatcherSuperglue>("../models/superglue_model.zip",
+                                                                                                                                      imgPrepared1.rows,
+                                                                                                                                      imgPrepared1.cols);
+    // std::unique_ptr<reconstructor::Core::FeatureMatcher> featMatcher = std::make_unique<reconstructor::Core::FlannMatcher>();
+    
+    
     std::vector<reconstructor::Core::Match> featMatches;
+
     featMatcher->matchFeatures(features1,
                                features2,
                                featMatches);
 
     std::cout << "n matches: " << featMatches.size() << std::endl;
-
+    
     timeLogger->endEvent();
-
     timeLogger->printTimings();
 
 
+    reconstructor::Utils::visualizeKeypoints(img1, features1, 1, true);
+    reconstructor::Utils::visualizeKeypoints(img2, features2, 2, true);
 
-    // reconstructor::Utils::visualizeKeypoints(imgOriginal, features);
 
     return 0;
 }

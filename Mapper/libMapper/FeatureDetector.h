@@ -33,6 +33,8 @@ namespace reconstructor::Core
 
         // preprocess image resize/change data type
         virtual cv::Mat prepImg(const cv::Mat &img) = 0;
+
+        virtual ~FeatureDetector() {}
     };
 
     /*

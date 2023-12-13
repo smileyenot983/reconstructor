@@ -15,6 +15,7 @@ namespace reconstructor::Core
         FeatCoord(coordType x, coordType y)
             : x(x), y(y)
         {}
+        virtual ~FeatCoord(){}
 
         coordType x;
         coordType y;
@@ -34,7 +35,7 @@ namespace reconstructor::Core
             : FeatCoord<coordType>(x, y), conf(conf)
         {}
 
-        double conf;
+        double conf = 0.01;
     };
 
     // TODO:
@@ -74,6 +75,7 @@ namespace reconstructor::Core
             : featCoord(featCoord), featDesc(featDesc)
         {}
         Feature() {}
+        virtual ~Feature() {}
 
         FeatCoord<coordType> featCoord;
         FeatDesc featDesc;
@@ -107,6 +109,9 @@ namespace reconstructor::Core
 
         double conf;
     };
+
+    template <typename coordType = int>
+    using FeatureConfPtr = std::shared_ptr<FeatureConf<coordType>>;
 
     
 }

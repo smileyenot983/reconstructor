@@ -24,6 +24,9 @@ namespace reconstructor::Core
         virtual void matchFeatures(const std::vector<FeaturePtr<>> &features1,
                                    const std::vector<FeaturePtr<>> &features2,
                                    std::vector<Match> &matches) = 0;
+
+        virtual ~FeatureMatcher() {}
+
     };
 
     class FlannMatcher : public FeatureMatcher
