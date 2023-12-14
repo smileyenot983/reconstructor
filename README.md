@@ -10,12 +10,14 @@ At the moment there is cpp a wrapper over SuperPoint net(https://github.com/magi
 # what is done at the moment
 
 1. 2 feature extractors: SuperPoint, ORB
+2. 2 feature matchers: SuperGlue, Flann
+3. Separate class for end2end reconstruction
 
 # todo:
 
-1. feature matchers(flann + superglue)
+1. image matcher
 2. feature filtering(epipolar geometry)
-3. initialization(epipolar geometry)
+3. initialization(epipolar geometry) and triangulation
 4. iterative pnp + optional BA
 5. global BA
 
