@@ -14,6 +14,7 @@ set(HEADERS
         libMapper/FeatureSuperPoint.h
         libMapper/FeatureMatcher.h
         libMapper/FeatureMatcherSuperglue.h
+        libMapper/SequentialReconstructor.h
 )
 
 set(SOURCES
@@ -21,7 +22,8 @@ set(SOURCES
         libMapper/FeatureDetector.cpp
         libMapper/FeatureSuperPoint.cpp 
         libMapper/FeatureMatcher.cpp 
-        libMapper/FeatureMatcherSuperglue.cpp      
+        libMapper/FeatureMatcherSuperglue.cpp
+        libMapper/SequentialReconstructor.cpp      
 )
 
 find_package(OpenCV 4.2 REQUIRED)

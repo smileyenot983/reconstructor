@@ -10,9 +10,9 @@ namespace reconstructor::Core
     class FeatureMatcherSuperglue : public FeatureMatcher
     {
     public:
-        FeatureMatcherSuperglue(const std::string& networkPath,
-                                const int imgHeight,
-                                const int imgWidth);
+        FeatureMatcherSuperglue(const int imgHeight = 128,
+                                const int imgWidth = 128,
+                                const std::string& networkPath = "../models/superglue_model.zip"); 
 
         void matchFeatures(const std::vector<FeaturePtr<>>& features1,
                            const std::vector<FeaturePtr<>>& features2,

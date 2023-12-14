@@ -73,9 +73,9 @@ namespace reconstructor::Core
 
     }
 
-    FeatureMatcherSuperglue::FeatureMatcherSuperglue(const std::string& networkPath,
-                                                     const int imgHeight,
-                                                     const int imgWidth)
+    FeatureMatcherSuperglue::FeatureMatcherSuperglue(const int imgHeight,
+                                                     const int imgWidth,
+                                                     const std::string& networkPath)
     : imgHeight(imgHeight)
     , imgWidth(imgWidth)
     {
@@ -85,7 +85,7 @@ namespace reconstructor::Core
         }
         catch (const c10::Error &e)
         {
-            std::cerr << "erro loading superNet" << std::endl;
+            std::cerr << "error loading superNet" << std::endl;
         }
     }
 

@@ -15,7 +15,7 @@ namespace reconstructor::Core
     class FeatureSuperPoint : public FeatureDetector
     {
     public:
-        FeatureSuperPoint(const std::string &networkPath);
+        FeatureSuperPoint(const std::string &networkPath = "../models/superpoint_model.zip");
 
         void detect(const cv::Mat &img,
                     std::vector<FeaturePtr<>> &features) override;

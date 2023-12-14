@@ -51,4 +51,44 @@ void visualizeKeypoints(const cv::Mat& img,
     visualizeKeypoints(img, featureCoords, imgIdx, saveImage);
 }
 
+void reshapeImg(cv::Mat &img,
+                 const int imgMaxSize)
+{
+    if (img.rows > img.cols)
+    {
+        if (img.rows > imgMaxSize)
+        {
+            auto aspectRatio = static_cast<double>(img.cols) / img.rows;
+            auto rowSize = imgMaxSize;
+            auto colSize = rowSize * aspectRatio;
+            colSize = colSize - std::fmod(colSize, 8);
+
+            cv::resize(img, img, cv::Size(colSize, rowSize));
+        }
+    }
+    else
+    {
+        if (img.cols > imgMaxSize)
+        {
+            auto aspectRatio = static_cast<double>(img.rows) / img.cols;
+            auto colSize = imgMaxSize;
+            auto rowSize = colSize * aspectRatio;
+            rowSize = rowSize - std::fmod(rowSize, 8);
+
+            cv::resize(img, img, cv::Size(colSize, rowSize));
+        }
+    }
+}
+
+cv::Mat readGrayImg(const std::string& imgPath,
+                       const int imgMaxSize)
+{
+    cv::Mat img = cv::imread(imgPath, cv::IMREAD_GRAYSCALE);
+    reshapeImg(img, imgMaxSize);
+    // cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
+    return img;
+}
+
+
+
 }
