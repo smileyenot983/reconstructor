@@ -1,11 +1,12 @@
 #pragma once
-/*
-Contains several useful utilities for debugging/visualization purposes
-*/
-#include "FeatureDetector.h"
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
 
+#include "FeatureDetector.h"
+#include "datatypes.h"
+
+using namespace reconstructor::Core;
 
 namespace reconstructor::Utils
 {
@@ -31,6 +32,14 @@ Reads image in grayscale and reshapes if needed
 */
 cv::Mat readGrayImg(const std::string& imgPath,
                         const int imgMaxSize);
+
+/*
+Normalizes feature coordinates, to be in [-coordRange, coordRange]
+*/
+std::vector<FeaturePtr<double>> normalizeFeatCoords(const std::vector<FeaturePtr<>>& features,
+                                                    const int imgHeight,
+                                                    const int imgWidth,
+                                                    const double coordRange = 0.7);
 
 
 }

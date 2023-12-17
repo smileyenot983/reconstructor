@@ -63,7 +63,8 @@ int main()
 {
     std::unique_ptr<reconstructor::Core::SequentialReconstructor> reconstructor = 
                 std::make_unique<reconstructor::Core::SequentialReconstructor>(reconstructor::Core::FeatDetectorType::SuperPoint,
-                                                                               reconstructor::Core::FeatMatcherType::SuperGlue);
+                                                                               reconstructor::Core::FeatMatcherType::SuperGlue,
+                                                                               reconstructor::Core::ImgMatcherType::Fake);
 
     reconstructor->reconstruct("../data/");
 

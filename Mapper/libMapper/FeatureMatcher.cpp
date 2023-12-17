@@ -32,7 +32,9 @@ FlannMatcher::FlannMatcher()
 
 void FlannMatcher::matchFeatures(const std::vector<FeaturePtr<>>& features1,
                                  const std::vector<FeaturePtr<>>& features2,
-                                 std::vector<Match>& matches)
+                                 std::vector<Match>& matches,
+                                 const std::pair<int, int> imgShape1,
+                                 const std::pair<int, int> imgShape2)
 {
     // make sure there are descriptors
     assert(features1.size() > 0 && features2.size() > 0);
@@ -58,9 +60,6 @@ void FlannMatcher::matchFeatures(const std::vector<FeaturePtr<>>& features1,
             // goodMatches.push_back(knnMatches[i][0]);
         }
     }
-
-    // std::cout << "goodMatches.size(): " << goodMatches.size() << std::endl;
 }
-
 
 } // namespace reconstructor::Core

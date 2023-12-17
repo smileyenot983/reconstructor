@@ -6,27 +6,22 @@
 
 namespace reconstructor::Core
 {
-
-    struct Match
-    {
-    public:
-        Match(size_t idx1, size_t idx2)
-            : idx1(idx1), idx2(idx2)
-        {
-        }
-        size_t idx1;
-        size_t idx2;
-    };
-
     class FeatureMatcher
     {
     public:
+        FeatureMatcher(const bool featNormalization = false)
+        {}
+
         virtual void matchFeatures(const std::vector<FeaturePtr<>> &features1,
                                    const std::vector<FeaturePtr<>> &features2,
-                                   std::vector<Match> &matches) = 0;
+                                   std::vector<Match> &matches,
+                                   const std::pair<int, int> imgShape1,
+                                   const std::pair<int, int> imgShape2) = 0;
+
 
         virtual ~FeatureMatcher() {}
 
+    protected:
     };
 
     class FlannMatcher : public FeatureMatcher
@@ -36,7 +31,9 @@ namespace reconstructor::Core
 
         void matchFeatures(const std::vector<FeaturePtr<>> &features1,
                            const std::vector<FeaturePtr<>> &features2,
-                           std::vector<Match>& matches) override;
+                           std::vector<Match>& matches,
+                           const std::pair<int, int> imgShape1,
+                            const std::pair<int, int> imgShape2) override;
 
     private:
         cv::Ptr<cv::DescriptorMatcher> matcher;

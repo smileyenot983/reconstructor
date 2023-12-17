@@ -118,7 +118,6 @@ namespace reconstructor::Core
         // last value in depth is used for "noKeypoint" prob-ty, remove it
         auto noDust = dense.slice(0, 0, 64);
         // put depth in last dim
-        std::cout << "noDust.sizes(): " << noDust.sizes() << std::endl;
         noDust = noDust.permute({1, 2, 0});
 
         // cellSize is defined by network architecture,
@@ -169,7 +168,7 @@ namespace reconstructor::Core
         // std::vector<int> filteredIds;
         auto keypointsFiltered = nmsFast(keypointCoordConfs, imgHeight, imgWidth);
 
-        LOG_MSG("keypointsFiltered.size(): " + std::to_string(keypointsFiltered.size()));
+        // LOG_MSG("keypointsFiltered.size(): " + std::to_string(keypointsFiltered.size()));
 
         auto keypointsNoBorder = removeBorderKeypoints(keypointsFiltered,
                                                         imgHeight,

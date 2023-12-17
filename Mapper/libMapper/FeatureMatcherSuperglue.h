@@ -10,19 +10,16 @@ namespace reconstructor::Core
     class FeatureMatcherSuperglue : public FeatureMatcher
     {
     public:
-        FeatureMatcherSuperglue(const int imgHeight = 128,
-                                const int imgWidth = 128,
-                                const std::string& networkPath = "../models/superglue_model.zip"); 
+        FeatureMatcherSuperglue(const std::string& networkPath = "../models/superglue_model.zip"); 
 
         void matchFeatures(const std::vector<FeaturePtr<>>& features1,
                            const std::vector<FeaturePtr<>>& features2,
-                           std::vector<Match>& matches) override;
+                           std::vector<Match>& matches,
+                           const std::pair<int, int> imgShape1,
+                           const std::pair<int, int> imgShape2) override;
 
     private:
         torch::jit::script::Module superGlue;
-
-        const int imgHeight;
-        const int imgWidth;
 
     };
 }

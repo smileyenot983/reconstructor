@@ -4,6 +4,9 @@
 #include <cmath>
 #include <memory>
 
+#include <opencv2/opencv.hpp>
+#include <Eigen/Dense>
+
 
 namespace reconstructor::Core
 {
@@ -113,5 +116,14 @@ namespace reconstructor::Core
     template <typename coordType = int>
     using FeatureConfPtr = std::shared_ptr<FeatureConf<coordType>>;
 
-    
+    struct Match
+    {
+    public:
+        Match(size_t idx1, size_t idx2)
+            : idx1(idx1), idx2(idx2)
+        {
+        }
+        size_t idx1;
+        size_t idx2;
+    };
 }
