@@ -42,4 +42,22 @@ std::vector<FeaturePtr<double>> normalizeFeatCoords(const std::vector<FeaturePtr
                                                     const double coordRange = 0.7);
 
 
+// calculates f_x in px coordinates
+double focalLengthmmToPx(const double focalLengthmm,
+                         const double imgDim,
+                         const double fovDegrees);
+
+Eigen::Matrix3d getIntrinsicsMat(const double focalLengthmm,
+                                 const int imgHeight,
+                                 const int imgWidth,
+                                 const double fovDegrees);
+
+
+std::vector<cv::Point2f> featuresToCvPoints(const std::vector<FeaturePtr<>>& features);
+
+cv::Mat eigen3dToCVMat(const Eigen::Matrix3d& eigenMat, int dType = CV_32F);
+
+Eigen::Matrix3d cvMatToEigen3d(const cv::Mat& cvMat);
+
+
 }

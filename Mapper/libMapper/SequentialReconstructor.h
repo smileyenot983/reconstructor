@@ -57,7 +57,7 @@ namespace reconstructor::Core
         void filterFeatMatches();
 
         // chooses initial image pair to start reconstruction
-        void chooseInitialPair();
+        Eigen::Matrix4d chooseInitialPair();
 
         // geometrically filters
         void filterFeatureMatches();
@@ -69,12 +69,15 @@ namespace reconstructor::Core
 
         // stores pairs of (imgId : imgPath) 
         std::vector<std::pair<int, fs::path>> imgIds2Paths;
-        // stores features per imgId, indexed by viewId
+        // stores features per imgId,
         std::vector<std::vector<FeaturePtr<>>> features;
         // imgMatches[imgId] - contains vector of all matched image ids
         std::vector<std::vector<int>> imgMatches;
         // stores map, { (imgId1, imgId2) : (matched feature ids, in case no matches just -1)} 
         std::map<std::pair<int, int>, std::vector<Match>> featureMatches;
+
+        // whether image has already been added to registration
+        std::vector<bool> imgRegistered; 
 
         // stores images sizes(necessary for feature coords normalization on superglue)
         std::vector<std::pair<int, int>> imgShapes;
@@ -87,6 +90,9 @@ namespace reconstructor::Core
         
 
         unsigned imgMaxSize = 512;
+
+        double defaultFov = 47.4;
+        double defaultFocalLengthmm = 42.0;
 
     };
 

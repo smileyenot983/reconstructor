@@ -1,137 +1,80 @@
 #include "GeometricFilter.h"
+
 #include <vector>
 
+#include "utils.h"
+
+using namespace reconstructor::Utils;
 namespace reconstructor::Core
 {
-    std::vector<cv::Point2f> featuresToCV(const std::vector<FeaturePtr<>>& features)
+
+    void writeInliersToVector(const cv::Mat& inliersCV,
+                              std::vector<bool>& inliersVec)
     {
-        std::vector<cv::Point2f> featuresCV(features.size());
-
-        for(size_t featIdx = 0; featIdx < features.size(); ++featIdx)
+        // std::cout << "inliersVec.rows: " << inliersCV.rows << std::endl;
+        // std::cout << "inliersVec.cols: " << inliersCV.cols << std::endl;
+        // std::cout << "inliersCV.at<uchar>(matchIdx): " << static_cast<unsigned>(inliersCV.at<uchar>(0)) << std::endl;
+        // std::cout << "inliersCV.at<uchar>(matchIdx): " << static_cast<unsigned>(inliersCV.at<uchar>(0)) << std::endl;
+        for(size_t matchIdx = 0; matchIdx < inliersCV.rows; ++matchIdx)
         {
-            cv::Point2f pt(features[featIdx]->featCoord.x, features[featIdx]->featCoord.y);
-            featuresCV[featIdx] = pt;
-
+            inliersVec.push_back(inliersCV.at<uchar>(matchIdx));
+            // std::cout << "inliersCV.at<uchar>(matchIdx): " << inliersCV.at<uchar>(matchIdx) << std::endl;
         }
-        return featuresCV;
     }
 
-    cv::Mat eigen3dToCVMat(const Eigen::Matrix3d& eigenMat)
+    Eigen::Matrix3d GeometricFilter::estimateEssential(const std::vector<FeaturePtr<>>& features1,
+                                                    const std::vector<FeaturePtr<>>& features2,
+                                                    const Eigen::Matrix3d& intrinsics1,
+                                                    const Eigen::Matrix3d& intrinsics2,
+                                                    std::shared_ptr<std::vector<bool>> inliers)
     {
-        cv::Mat cvMat;
-        for(size_t row=0; row < 3; ++row)
-        {
-            for(size_t col=0; col < 3; ++col)
-            {
-                cvMat.at<double>(row,col) = eigenMat(row,col);
-            }
-        }
-        return cvMat;
-    }
+        auto featuresCV1 = featuresToCvPoints(features1);
+        auto featuresCV2 = featuresToCvPoints(features2);
 
-    Eigen::Matrix3d cvMatToEigen3d(const cv::Mat& cvMat)
-    {
-        Eigen::Matrix3d eigenMat;
-        for(size_t row=0; row < 3; ++row)
-        {
-            for(size_t col=0; col < 3; ++col)
-            {
-                eigenMat(row, col) = cvMat.at<double>(row,col);
-            }
-        }
-        return eigenMat;
-
-    }
-
-    cv::Mat GeometricFilter::estimateEssentialMat(const std::vector<FeaturePtr<>>& features1,
-                                                            const std::vector<FeaturePtr<>>& features2,
-                                                            const Eigen::Matrix3d& intrinsics1,
-                                                            const Eigen::Matrix3d& intrinsics2)
-    {
-        auto featuresCV1 = featuresToCV(features1);
-        auto featuresCV2 = featuresToCV(features2);
-
-        auto intrinsicsCV1 = eigen3dToCVMat(intrinsics1);
-        auto intrinsicsCV2 = eigen3dToCVMat(intrinsics2);
-
-        // does not yet support different intrinsics
-        // TODO: use cv::undistort and support different intrinsics
         if(intrinsics1 != intrinsics2)
         {
             throw std::runtime_error("Different intrinsics are not yet supported");
         }
+        
+        auto intrinsicsCV1 = eigen3dToCVMat(intrinsics1);
+        auto intrinsicsCV2 = eigen3dToCVMat(intrinsics2);
 
-        cv::Mat inliers;
-        auto essentialMat = cv::findEssentialMat(featuresCV1,
+        cv::Mat inliersCV;
+        auto essentialMatCV = cv::findEssentialMat(featuresCV1,
                                                  featuresCV2,
                                                  intrinsicsCV1,
                                                  cv::RANSAC,
                                                  0.999,
                                                  1.0,
-                                                 inliers);
+                                                 inliersCV);
 
-        auto eigenMat = cvMatToEigen3d(essentialMat);
+        std::cout << "essentialMatCV.type(): " << essentialMatCV.type() << std::endl;
 
+        if(inliers)
+        {
+            writeInliersToVector(inliersCV, *inliers);
+        }        
+        
+        auto essentialMatEigen = cvMatToEigen3d(essentialMatCV);
 
-        return inliers;
+        return essentialMatEigen;
     }
 
-    cv::Mat GeometricFilter::estimateFundamentalMat(const std::vector<FeaturePtr<>> &features1,
-                                                            const std::vector<FeaturePtr<>> &features2)
+    Eigen::Matrix3d GeometricFilter::estimateFundamental(const std::vector<FeaturePtr<>>& features1,
+                                                 const std::vector<FeaturePtr<>>& features2,
+                                                 std::shared_ptr<std::vector<bool>> inliers)
     {
-        // first convert matched features to cv compatible format:
-        auto featuresCV1 = featuresToCV(features1);
-        auto featuresCV2 = featuresToCV(features2);
+        auto featuresCV1 = featuresToCvPoints(features1);
+        auto featuresCV2 = featuresToCvPoints(features2);
 
-        cv::Mat inliers;
-        auto fundamentalMat = cv::findFundamentalMat(featuresCV1, featuresCV2, inliers);
+        cv::Mat inliersCV;
+        auto fundamentalMat = cv::findFundamentalMat(featuresCV1, featuresCV2, inliersCV);
 
+        writeInliersToVector(inliersCV, *inliers);
         auto eigenMat = cvMatToEigen3d(fundamentalMat);
 
-        return inliers;
-    }
+        return eigenMat;
+    }   
 
-    void GeometricFilter::filterFeatures(const std::vector<FeaturePtr<>>& features1,
-                                  const std::vector<FeaturePtr<>>& features2,
-                                  const std::vector<Match>& featMatches,
-                                  std::vector<Match>& featMatchesFiltered,
-                                  const std::shared_ptr<Eigen::Matrix3d> intrinsics1,
-                                  const std::shared_ptr<Eigen::Matrix3d> intrinsics2)
-    {
-        // extract matched features
-        std::vector<FeaturePtr<>> featuresMatched1;
-        std::vector<FeaturePtr<>> featuresMatched2;
-        for(const auto& matchedPair : featMatches)
-        {
-            featuresMatched1.push_back(features1[matchedPair.idx1]);
-            featuresMatched2.push_back(features2[matchedPair.idx2]);
-
-        }
-
-        cv::Mat inlierIds;
-        if(intrinsics1 && intrinsics2)
-        {
-            inlierIds = estimateEssentialMat(featuresMatched1,
-                                                     featuresMatched2,
-                                                     *intrinsics1,
-                                                     *intrinsics2);
-        }
-        else
-        {
-            inlierIds = estimateFundamentalMat(featuresMatched1,
-                                                         featuresMatched2);
-        }
-
-        for(size_t pairIdx = 0; pairIdx < inlierIds.rows; ++pairIdx)
-        {
-            if(inlierIds.at<uchar>(pairIdx) == 1)
-            {
-                featMatchesFiltered.push_back(featMatches[pairIdx]);
-            }
-        }
-        // featMatchesFiltered
-
-        // std::cout << "inlierIds.rows: " << inlierIds.rowBachelor’s de
-    }
 
 }
