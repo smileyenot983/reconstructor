@@ -57,7 +57,12 @@ namespace reconstructor::Core
         void filterFeatMatches();
 
         // chooses initial image pair to start reconstruction
-        Eigen::Matrix4d chooseInitialPair();
+        Eigen::Matrix4d chooseInitialPair(int& imgIdx1, int& imgIdx2);
+
+        // 2-view triangulation of all matched features 
+        void triangulateInitialPair(const Eigen::Matrix4d relativePose,
+                                                         const int imgIdx1,
+                                                         const int imgIdx2);
 
         // geometrically filters
         void filterFeatureMatches();
@@ -71,13 +76,19 @@ namespace reconstructor::Core
         std::vector<std::pair<int, fs::path>> imgIds2Paths;
         // stores features per imgId,
         std::vector<std::vector<FeaturePtr<>>> features;
+
+        
+
+        std::vector<Eigen::Matrix4d> cameraPoses;
+        std::vector<bool> registeredImages;
+
+
+
+
         // imgMatches[imgId] - contains vector of all matched image ids
         std::vector<std::vector<int>> imgMatches;
         // stores map, { (imgId1, imgId2) : (matched feature ids, in case no matches just -1)} 
         std::map<std::pair<int, int>, std::vector<Match>> featureMatches;
-
-        // whether image has already been added to registration
-        std::vector<bool> imgRegistered; 
 
         // stores images sizes(necessary for feature coords normalization on superglue)
         std::vector<std::pair<int, int>> imgShapes;

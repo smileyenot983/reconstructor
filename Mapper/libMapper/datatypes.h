@@ -116,6 +116,39 @@ namespace reconstructor::Core
     template <typename coordType = int>
     using FeatureConfPtr = std::shared_ptr<FeatureConf<coordType>>;
 
+
+    struct TriangulatedFeature
+    {
+        TriangulatedFeature(){}
+        TriangulatedFeature(const int imgIdx, const int featIdx)
+        : imgIdx(imgIdx)
+        , featIdx(featIdx)
+        {}
+        int imgIdx;
+        int featIdx;
+    };
+
+    /*
+    Landmarks represent triangulated 2d features coordinates in 3d
+    */
+    struct Landmark
+    {
+        Landmark(){}
+
+        Landmark(const int x,
+                 const int y,
+                 const int z)
+        : x(x)
+        , y(y)
+        , z(z)
+        {}
+        std::vector<TriangulatedFeature> triangulatedFeatures; 
+        int x;
+        int y;
+        int z;
+    };
+
+
     struct Match
     {
     public:

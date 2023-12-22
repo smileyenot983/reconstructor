@@ -9,17 +9,19 @@ At the moment there is cpp a wrapper over SuperPoint net(https://github.com/magi
 
 # what is done at the moment
 
-1. 2 feature extractors: SuperPoint, ORB
-2. 2 feature matchers: SuperGlue, Flann
-3. Separate class for end2end reconstruction
+1. 2 feature extractors: SuperPoint, ORB + BaseClass for possible extension
+2. 2 feature matchers: SuperGlue, Flann + BaseClass for possible extension
+3. Feature filtering(based on epipolar geometry)
+4. Initial img pair choice and initial triangulation
+5. Separate class for end2end reconstruction
+6. Img matcher(which for now assumes all images are matched)
 
 # todo:
 
-1. image matcher
-2. feature filtering(epipolar geometry)
-3. initialization(epipolar geometry) and triangulation
-4. iterative pnp + optional BA
-5. global BA
+0. add 3d visualization of reconstructed points and camera positions(optionally)
+1. image matcher(apply some image retrieval, FAISS, metric learning)
+2. iterative pnp + optional BA
+3. global BA
 
 
 # how to run
