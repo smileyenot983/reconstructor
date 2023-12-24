@@ -3,8 +3,13 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
 
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+
 #include "FeatureDetector.h"
 #include "datatypes.h"
+
+
 
 using namespace reconstructor::Core;
 
@@ -59,5 +64,10 @@ cv::Mat eigen3dToCVMat(const Eigen::Matrix3d& eigenMat, int dType = CV_32F);
 
 Eigen::Matrix3d cvMatToEigen3d(const cv::Mat& cvMat);
 
+// creates cloud from landmarks
+pcl::PointCloud<pcl::PointXYZ>::Ptr landmarksToPclCloud(const std::vector<Landmark>& landmarks);
+
+// visualizes pointcloud
+void viewCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 
 }

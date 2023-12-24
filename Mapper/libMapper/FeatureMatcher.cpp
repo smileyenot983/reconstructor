@@ -32,7 +32,7 @@ FlannMatcher::FlannMatcher()
 
 void FlannMatcher::matchFeatures(const std::vector<FeaturePtr<>>& features1,
                                  const std::vector<FeaturePtr<>>& features2,
-                                 std::vector<Match>& matches,
+                                 std::unordered_map<int, int>& matches,
                                  const std::pair<int, int> imgShape1,
                                  const std::pair<int, int> imgShape2)
 {
@@ -55,8 +55,9 @@ void FlannMatcher::matchFeatures(const std::vector<FeaturePtr<>>& features1,
     {
         if(knnMatches[i][0].distance < ratioThresh * knnMatches[i][1].distance)
         {
-            Match match(knnMatches[i][0].queryIdx, knnMatches[i][0].trainIdx);
-            matches.push_back(match);
+            matches[knnMatches[i][0].queryIdx] = knnMatches[i][0].trainIdx;
+            // Match match(knnMatches[i][0].queryIdx, knnMatches[i][0].trainIdx);
+            // matches.push_back(match);
             // goodMatches.push_back(knnMatches[i][0]);
         }
     }

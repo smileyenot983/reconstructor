@@ -54,7 +54,7 @@ namespace reconstructor::Core
 
     void FeatureMatcherSuperglue::matchFeatures(const std::vector<FeaturePtr<>>& features1,
                                                 const std::vector<FeaturePtr<>>& features2,
-                                                std::vector<Match>& matches,
+                                                std::unordered_map<int, int>& matches,
                                                 const std::pair<int, int> imgShape1,
                                                 const std::pair<int, int> imgShape2)
     {
@@ -84,8 +84,9 @@ namespace reconstructor::Core
             // -1 means no matches
             if(matchedFeatIdx != -1)
             {
-                Match match(featIdx, matchedFeatIdx);
-                matches.push_back(match);
+                matches[featIdx] = matchedFeatIdx;
+                // Match match(featIdx, matchedFeatIdx);
+                // matches.push_back(match);
             }
 
         }

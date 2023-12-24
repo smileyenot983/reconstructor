@@ -87,42 +87,56 @@ namespace reconstructor::Core
                 auto features1 = features[imgId1];
                 auto features2 = features[imgId2];
                 std::pair<int, int> curPair(imgId1, imgId2);
-                std::vector<Match> curMatches;
+                // std::vector<Match> curMatches;
+                std::unordered_map<int, int> curMatches;
 
                 // if this pair's feature were already matched(for features: (1,2)=(2,1) ), don't match again
                 std::pair<int, int> inversePair(imgId2, imgId1);
                 if(featureMatches.find(inversePair) != featureMatches.end())
                 {
-                    featureMatches[curPair] = featureMatches[inversePair];
+                    for(const auto& [featIdx1, featIdx2] : featureMatches[inversePair])
+                    {
+                        featureMatches[curPair][featIdx2] = featIdx1;
+                    }
+                    // featureMatches[curPair] = featureMatches[inversePair];
                     continue;
                 }
 
                 featMatcher->matchFeatures(features1, features2, curMatches, imgShapes[imgId1], imgShapes[imgId2]);
                 
 
-                // write mathes into vectors
+                // write matches into vectors
                 std::vector<FeaturePtr<>> featuresMatched1;
                 std::vector<FeaturePtr<>> featuresMatched2;
 
-                for(const auto& matchedFeatPair : curMatches)
+                for(const auto& [featIdx1, featIdx2] : curMatches)
                 {
-                    featuresMatched1.push_back(features1[matchedFeatPair.idx1]);
-                    featuresMatched2.push_back(features2[matchedFeatPair.idx2]);
+                    featuresMatched1.push_back(features1[featIdx1]);
+                    featuresMatched2.push_back(features2[featIdx2]);
                 }
+
+                // for(const auto& matchedFeatPair : curMatches)
+                // {
+                //     featuresMatched1.push_back(features1[matchedFeatPair.idx1]);
+                //     featuresMatched2.push_back(features2[matchedFeatPair.idx2]);
+                // }
 
                 // apply geometric filter and leave only valid matches
                 std::shared_ptr<std::vector<bool>> featMatchInliers = std::make_shared<std::vector<bool>>();
                 featFilter->estimateFundamental(featuresMatched1, featuresMatched2, featMatchInliers);
 
                 // write only filtered matches
-                std::vector<Match> curMatchesFiltered;
+                // std::vector<Match> curMatchesFiltered;
+                std::unordered_map<int, int> curMatchesFiltered;
+
 
                 for(size_t matchIdx = 0; matchIdx < featMatchInliers->size(); ++matchIdx)
                 {
                     // if true -> valid match
                     if(featMatchInliers->at(matchIdx))
                     {
-                        curMatchesFiltered.push_back(curMatches[matchIdx]);
+                        curMatchesFiltered[matchIdx] = curMatches[matchIdx];
+                        // curMatchesFiltered.push_back(curMatches[matchIdx]);
                     }
                 }
 
@@ -161,8 +175,8 @@ namespace reconstructor::Core
         relativePose(3,3) = 1.0;
     }
 
-    bool sortMatches(std::pair<std::pair<int, int>, std::vector<Match>> matches1,
-                     std::pair<std::pair<int, int>, std::vector<Match>> matches2)
+    bool sortMatches(std::pair<std::pair<int, int>, std::unordered_map<int, int> > matches1,
+                     std::pair<std::pair<int, int>, std::unordered_map<int, int> > matches2)
     {
         return matches1.second.size() > matches2.second.size();
     }
@@ -171,7 +185,8 @@ namespace reconstructor::Core
     Eigen::Matrix4d SequentialReconstructor::chooseInitialPair(int& imgIdx1, int& imgIdx2)
     {
         // sort matched images by number of matches:
-        std::vector<std::pair<std::pair<int, int>, std::vector<Match>>> featureMatchesVec;
+        std::vector<std::pair<std::pair<int, int>, std::unordered_map<int,int>>> featureMatchesVec;
+
         for(const auto& match : featureMatches)
         {
             featureMatchesVec.push_back(match);
@@ -200,11 +215,13 @@ namespace reconstructor::Core
         std::vector<FeaturePtr<>> features1;
         std::vector<FeaturePtr<>> features2;
 
-        for(const auto& matchedFeatPair : featMatches)
+        std::cout << "featMatches.size(): " << featMatches.size() << std::endl;
+
+        for(const auto& [featIdx1, featIdx2] : featMatches)
         {
             // feat
-            features1.push_back(features[imgIdx1][matchedFeatPair.idx1]);
-            features2.push_back(features[imgIdx2][matchedFeatPair.idx2]);
+            features1.push_back(features[imgIdx1][featIdx1]);
+            features2.push_back(features[imgIdx2][featIdx2]);
             // features2.push_back()
         }
         
@@ -257,10 +274,10 @@ namespace reconstructor::Core
     {
         auto matchedFeatIds = featureMatches[std::make_pair(imgIdx1, imgIdx2)];
 
-        for(const auto& matchedPair : matchedFeatIds)
+        for(const auto& [featIdx1, featIdx2] : matchedFeatIds)
         {
-            auto featPtr1 = features[imgIdx1][matchedPair.idx1];
-            auto featPtr2 = features[imgIdx2][matchedPair.idx2];
+            auto featPtr1 = features[imgIdx1][featIdx1];
+            auto featPtr2 = features[imgIdx2][featIdx2];
 
             // project intrinsics into image plane:
             // featPtr1->featCoord.x
@@ -290,12 +307,69 @@ namespace reconstructor::Core
                              landmarkCoords);
 
             Landmark landmarkCurr(landmarkCoords(0),landmarkCoords(1), landmarkCoords(2));
-            TriangulatedFeature triangulatedFeature1(imgIdx1, matchedPair.idx1);
-            TriangulatedFeature triangulatedFeature2(imgIdx2, matchedPair.idx2);
+            TriangulatedFeature triangulatedFeature1(imgIdx1, featIdx1);
+            TriangulatedFeature triangulatedFeature2(imgIdx2, featIdx2);
             landmarkCurr.triangulatedFeatures.push_back(triangulatedFeature1);
             landmarkCurr.triangulatedFeatures.push_back(triangulatedFeature2);
+
+            landmarks.push_back(landmarkCurr);
             
         }
+    }
+
+
+
+    void SequentialReconstructor::addNextView()
+    {
+        
+        // 1. extract matched images ids
+        std::set<int> nextViewCandidates;
+        for(size_t imgIdx = 0; imgIdx < registeredImages.size(); ++imgIdx)
+        {
+            if(registeredImages[imgIdx])
+            {
+                // add all matched images as candidates
+                for(size_t matchedImgIdx = 0; matchedImgIdx < imgMatches[imgIdx].size(); ++matchedImgIdx)
+                {
+                    nextViewCandidates.insert(matchedImgIdx);
+                }
+            }
+        }
+        
+        // std::vector<int> landmarkMatches(nextViewCandidates.size());
+        
+        // std::map<int, int> imgIdxLandmarkMatches; 
+        // // 2. rank candidates based on number of matches with landmarks
+        // for(const auto& candidateImgIdx : nextViewCandidates)
+        // {
+        //     auto candidateImgMatches = imgMatches[candidateImgIdx]; 
+        //     // go through all landmarks
+        //     for(const auto& landmark : landmarks)
+        //     {
+        //         // go through all features that match with landmark:
+        //         for(const auto& triangulatedFeature : landmark.triangulatedFeatures)
+        //         {
+        //             auto featIdx = triangulatedFeature.featIdx;
+        //             auto imgIdx = triangulatedFeature.imgIdx;
+
+        //             // check if images were matched:
+        //             if(std::find(candidateImgMatches.begin(), candidateImgMatches.end(), imgIdx) != candidateImgMatches.end())
+        //             {
+        //                 // check if there are matched features
+        //                 for(const auto& featMatch : featureMatches[std::make_pair(candidateImgIdx, imgIdx)])
+        //                 {
+        //                     if(featMatch.idx2 == featIdx)
+        //                     {
+        //                         imgIdxLandmarkMatches[candidateImgIdx] +
+        //                         landmarkMatches[candidate]
+        //                     }
+        //                     featMatch.idx1
+        //                 }
+        //             }
+
+        //         }
+        //     }
+        // }
     }
 
     void SequentialReconstructor::reconstruct(const std::string& imgFolder)
@@ -314,7 +388,6 @@ namespace reconstructor::Core
 
         cameraPoses.resize(imgIds2Paths.size());
 
-
         detectFeatures();
 
         matchImages();
@@ -330,8 +403,15 @@ namespace reconstructor::Core
         registeredImages[imgIdx2] = true;
 
         triangulateInitialPair(initialPose, imgIdx1, imgIdx2);
+        std::cout << "landmarks initial size: " << landmarks.size() << std::endl;
+
+
+        auto cloudPtr = reconstructor::Utils::landmarksToPclCloud(landmarks);
+        reconstructor::Utils::viewCloud(cloudPtr);
 
         // add rest of views via solvepnp
+        
+
 
     }
 

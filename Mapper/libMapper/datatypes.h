@@ -135,17 +135,17 @@ namespace reconstructor::Core
     {
         Landmark(){}
 
-        Landmark(const int x,
-                 const int y,
-                 const int z)
+        Landmark(const double x,
+                 const double y,
+                 const double z)
         : x(x)
         , y(y)
         , z(z)
         {}
         std::vector<TriangulatedFeature> triangulatedFeatures; 
-        int x;
-        int y;
-        int z;
+        double x;
+        double y;
+        double z;
     };
 
 

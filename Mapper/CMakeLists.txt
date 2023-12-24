@@ -33,13 +33,18 @@ set(SOURCES
 find_package(OpenCV 4.2 REQUIRED)
 find_package(Torch REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(PCL REQUIRED)
 
 add_library(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS}
                                       ${TORCH_LIBRARIES}
-                                      Eigen3::Eigen)
+                                      Eigen3::Eigen
+                                      ${PCL_LIBRARIES}
+                                      )
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}
                                                   ${OpenCV_INCLUDE_DIRS}
-                                                  ${TORCH_INCLUDE_DIRS})
+                                                  ${TORCH_INCLUDE_DIRS}
+                                                  ${PCL_INCLUDE_DIRS})
+
                                                   
 

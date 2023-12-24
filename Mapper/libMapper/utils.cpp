@@ -1,5 +1,8 @@
 #include "utils.h"
 
+#include <pcl/visualization/pcl_visualizer.h>
+#include <thread>
+
 namespace reconstructor::Utils
 {
 
@@ -195,6 +198,40 @@ Eigen::Matrix3d cvMatToEigen3d(const cv::Mat& cvMat)
         }
     }
     return eigenMat;
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr landmarksToPclCloud(const std::vector<Landmark>& landmarks)
+{
+    // auto landmark_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+
+    // it is better to use it like that, using default shared_ptr would conflict with other pcl functions
+    pcl::PointCloud<pcl::PointXYZ>::Ptr landmark_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+    for(const auto& landmark : landmarks)
+    {
+        pcl::PointXYZ pt(landmark.x, landmark.y, landmark.z);
+        landmark_cloud->push_back(pt);
+    }
+    std::cout << "landmark_cloud.size(): " << landmark_cloud->size() << std::endl;
+
+    return landmark_cloud;
+}
+
+using namespace std::chrono_literals;
+void viewCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
+{
+    pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    viewer->setBackgroundColor (0, 0, 0);
+    viewer->addPointCloud<pcl::PointXYZ> (cloud, "sample cloud");
+    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
+    viewer->addCoordinateSystem (1.0);
+    viewer->initCameraParameters ();
+
+    while(!viewer->wasStopped())
+    {
+        viewer->spinOnce(100);
+        std::this_thread::sleep_for(100ms);
+    }
 }
 
 }

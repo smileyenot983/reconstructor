@@ -2,6 +2,7 @@
 
 #include <string>
 #include <filesystem>
+#include <unordered_map>
 
 #include "FeatureDetector.h"
 #include "FeatureSuperPoint.h"
@@ -30,6 +31,17 @@ namespace reconstructor::Core
     {
         Fake,
     };
+
+    struct pair_hash {
+    template <class T1, class T2>
+    std::size_t operator () (const std::pair<T1, T2>& p) const {
+        auto h1 = std::hash<T1>{}(p.first);
+        auto h2 = std::hash<T2>{}(p.second);
+
+        // Simple hash combining technique (could be more sophisticated)
+        return h1 ^ h2;
+    }
+};
 
     /*
     class which performs sequential reconstruction:
@@ -64,6 +76,10 @@ namespace reconstructor::Core
                                                          const int imgIdx1,
                                                          const int imgIdx2);
 
+        void addNextView();
+
+
+
         // geometrically filters
         void filterFeatureMatches();
 
@@ -77,18 +93,17 @@ namespace reconstructor::Core
         // stores features per imgId,
         std::vector<std::vector<FeaturePtr<>>> features;
 
-        
+        std::vector<Landmark> landmarks;
 
         std::vector<Eigen::Matrix4d> cameraPoses;
         std::vector<bool> registeredImages;
 
-
-
-
         // imgMatches[imgId] - contains vector of all matched image ids
         std::vector<std::vector<int>> imgMatches;
         // stores map, { (imgId1, imgId2) : (matched feature ids, in case no matches just -1)} 
-        std::map<std::pair<int, int>, std::vector<Match>> featureMatches;
+        // std::map<std::pair<int, int>, std::vector<Match>> featureMatches;
+
+        std::unordered_map< std::pair<int, int>, std::unordered_map<int, int>, pair_hash > featureMatches;
 
         // stores images sizes(necessary for feature coords normalization on superglue)
         std::vector<std::pair<int, int>> imgShapes;
