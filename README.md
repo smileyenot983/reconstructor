@@ -1,11 +1,12 @@
 
 # reconstructor
 
-This project is aimed for 3d reconstruction using camera images
+This project is aimed for 3d reconstruction(sparse up-to scale cloud + camera positions) using camera images
 
 # reconstructor features
 
-At the moment there is cpp a wrapper over SuperPoint net(https://github.com/magicleap/SuperPointPretrainedNetwork), 
+At the moment there is cpp a wrapper over SuperPoint(https://github.com/magicleap/SuperPointPretrainedNetwork), 
+also a cpp wrapper over SuperGlue matcher(https://github.com/magicleap/SuperGluePretrainedNetwork)
 
 # what is done at the moment
 
@@ -15,22 +16,27 @@ At the moment there is cpp a wrapper over SuperPoint net(https://github.com/magi
 4. Initial img pair choice and initial triangulation
 5. Separate class for end2end reconstruction
 6. Img matcher(which for now assumes all images are matched)
+7. 3d visualization of reconstructed cloud(up to scale)
 
 # todo:
 
-0. add 3d visualization of reconstructed points and camera positions(optionally)
-1. image matcher(apply some image retrieval, FAISS, metric learning)
-2. iterative pnp + optional BA
-3. global BA
+1. incremental reconstruction via pnp + optionally BA
+2. global BA
+3. image matcher(apply some image retrieval, FAISS, metric learning)
+4. visualization of camera positions(optionally)
 
+# todo later:
+
+1. use monocular depth estimating networks(for example https://github.com/isl-org/MiDaS) to obtain real scale
 
 # how to run
 
 1. install OpenCV 4.2+  https://docs.opencv.org/4.x/d7/d9f/tutorial_linux_install.html
 2. install libTorch https://pytorch.org/, choose Language: C++/Java, only CPU platform tested at the moment
-3. clone this repo and change path to libtorch in CMakeLists.txt "CMAKE_PREFIX_PATH"
-4. `mkdir build && cd build`
-5. `cmake .. && make`
-6. run `./reconstruct`
+3. install PCL https://pointclouds.org/downloads/
+4. clone this repo and change path to libtorch in CMakeLists.txt "CMAKE_PREFIX_PATH"
+5. `mkdir build && cd build`
+6. `cmake .. && make`
+7. run `./reconstruct`
 
 
