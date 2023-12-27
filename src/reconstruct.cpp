@@ -66,7 +66,7 @@ int main()
                                                                                reconstructor::Core::FeatMatcherType::SuperGlue,
                                                                                reconstructor::Core::ImgMatcherType::Fake);
 
-    reconstructor->reconstruct("../data/");
+    reconstructor->reconstruct("../data/", "../out_data/");
 
     // std::unique_ptr<TimeLogger> timeLogger = std::make_unique<TimeLogger>();
 

@@ -14,9 +14,9 @@ namespace reconstructor::Core
     class ImageMatcher
     {
     public:
-        virtual void match(const std::vector<std::pair<int, fs::path>>& imgIds2Paths,
-                           const std::vector<std::vector<FeaturePtr<>>> features,
-                           std::vector<std::vector<int>>& imgMatches) = 0;
+        virtual void match(const std::unordered_map<int, fs::path>& imgIds2Paths,
+                           const std::unordered_map<int, std::vector<FeaturePtr<>>>& features,
+                           std::unordered_map<int, std::vector<int>>& imgMatches) = 0;
     
         virtual ~ImageMatcher(){};
     };
@@ -27,9 +27,9 @@ namespace reconstructor::Core
     class FakeImgMatcher : public ImageMatcher
     {
     public: 
-        void match(const std::vector<std::pair<int, fs::path>>& imgIds2Paths,
-                   const std::vector<std::vector<FeaturePtr<>>> features,
-                   std::vector<std::vector<int>>& imgMatches) override;
+        void match(const std::unordered_map<int, fs::path>& imgIds2Paths,
+                   const std::unordered_map<int, std::vector<FeaturePtr<>>>& features,
+                   std::unordered_map<int, std::vector<int>>& imgMatches) override;
     };
 
 }

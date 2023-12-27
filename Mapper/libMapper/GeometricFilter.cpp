@@ -7,21 +7,6 @@
 using namespace reconstructor::Utils;
 namespace reconstructor::Core
 {
-
-    void writeInliersToVector(const cv::Mat& inliersCV,
-                              std::vector<bool>& inliersVec)
-    {
-        // std::cout << "inliersVec.rows: " << inliersCV.rows << std::endl;
-        // std::cout << "inliersVec.cols: " << inliersCV.cols << std::endl;
-        // std::cout << "inliersCV.at<uchar>(matchIdx): " << static_cast<unsigned>(inliersCV.at<uchar>(0)) << std::endl;
-        // std::cout << "inliersCV.at<uchar>(matchIdx): " << static_cast<unsigned>(inliersCV.at<uchar>(0)) << std::endl;
-        for(size_t matchIdx = 0; matchIdx < inliersCV.rows; ++matchIdx)
-        {
-            inliersVec.push_back(inliersCV.at<uchar>(matchIdx));
-            // std::cout << "inliersCV.at<uchar>(matchIdx): " << inliersCV.at<uchar>(matchIdx) << std::endl;
-        }
-    }
-
     Eigen::Matrix3d GeometricFilter::estimateEssential(const std::vector<FeaturePtr<>>& features1,
                                                     const std::vector<FeaturePtr<>>& features2,
                                                     const Eigen::Matrix3d& intrinsics1,
@@ -52,7 +37,7 @@ namespace reconstructor::Core
 
         if(inliers)
         {
-            writeInliersToVector(inliersCV, *inliers);
+            reconstructor::Utils::writeInliersToVector(inliersCV, *inliers);
         }        
         
         auto essentialMatEigen = cvMatToEigen3d(essentialMatCV);

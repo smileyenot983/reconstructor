@@ -59,12 +59,15 @@ namespace reconstructor::Core
 
         // used for performing feature detection on all images in folder
         void detectFeatures();
+        void drawFeaturesAndSave(const std::string& outFolder);
 
         // creates pairs of images for feature matching
         void matchImages();
 
         // used for performing feature matching on all images in folder
-        void matchFeatures();
+        void matchFeatures(bool filter = true);
+        // useful for debugging to see how well feature are matched
+        void drawFeatMatchesAndSave(const std::string& outFolder);
 
         void filterFeatMatches();
 
@@ -78,28 +81,39 @@ namespace reconstructor::Core
 
         void addNextView();
 
-
+        // registers image via solving pnp
+        void registerImagePnP(const int imgIdx,
+                              const std::vector<int>& featureIdxs,
+                              const std::vector<int>& landmarkIdxs);
 
         // geometrically filters
         void filterFeatureMatches();
 
         // performs end2end reconstruction
-        void reconstruct(const std::string& imgFolder);
+        void reconstruct(const std::string& imgFolder,
+                         const std::string& outFolder);
     
     private:
 
         // stores pairs of (imgId : imgPath) 
-        std::vector<std::pair<int, fs::path>> imgIds2Paths;
+        // std::vector<std::pair<int, fs::path>> imgIds2Paths;
+        std::unordered_map<int, fs::path> imgIds2Paths;
         // stores features per imgId,
-        std::vector<std::vector<FeaturePtr<>>> features;
+        // std::vector<std::vector<FeaturePtr<>>> features;
+
+        std::unordered_map<int, std::vector<FeaturePtr<>>> features;
 
         std::vector<Landmark> landmarks;
 
-        std::vector<Eigen::Matrix4d> cameraPoses;
-        std::vector<bool> registeredImages;
+        // std::vector<Eigen::Matrix4d> cameraPoses;
+        // std::vector<bool> registeredImages;
+        
+        std::unordered_map<int, Eigen::Matrix4d> imgIdx2camPose;
+        std::unordered_map<int, bool> registeredImages;
 
         // imgMatches[imgId] - contains vector of all matched image ids
-        std::vector<std::vector<int>> imgMatches;
+        // std::vector<std::vector<int>> imgMatches;
+        std::unordered_map< int, std::vector<int> > imgMatches;
         // stores map, { (imgId1, imgId2) : (matched feature ids, in case no matches just -1)} 
         // std::map<std::pair<int, int>, std::vector<Match>> featureMatches;
 

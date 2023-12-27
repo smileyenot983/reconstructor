@@ -70,4 +70,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr landmarksToPclCloud(const std::vector<Landma
 // visualizes pointcloud
 void viewCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 
+void writeInliersToVector(const cv::Mat& inliersCV,
+                              std::vector<bool>& inliersVec);
+
 }

@@ -62,12 +62,12 @@ namespace reconstructor::Core
         auto featuresNormalized1 = reconstructor::Utils::normalizeFeatCoords(features1, imgShape1.first, imgShape1.second);
         auto featuresNormalized2 = reconstructor::Utils::normalizeFeatCoords(features2, imgShape2.first, imgShape2.second);
 
-        auto tensorInputs0 = featsToTensors(featuresNormalized1);
-        auto tensorInputs1 = featsToTensors(featuresNormalized2);
+        auto tensorInputs1 = featsToTensors(featuresNormalized1);
+        auto tensorInputs2 = featsToTensors(featuresNormalized2);
 
         // network expects: coords0, coords1, descs0, descs1, scores0, scores1
-        std::vector<torch::jit::IValue> tensorInputs = {tensorInputs0[0], tensorInputs1[0], tensorInputs0[1],
-                                                         tensorInputs1[1], tensorInputs0[2], tensorInputs1[2]};
+        std::vector<torch::jit::IValue> tensorInputs = {tensorInputs1[0], tensorInputs2[0], tensorInputs1[1],
+                                                         tensorInputs2[1], tensorInputs1[2], tensorInputs2[2]};
 
 
         auto netOut = superGlue.forward(tensorInputs);
@@ -77,19 +77,36 @@ namespace reconstructor::Core
         auto matches1 = netOut.toTuple()->elements()[1].toTensor();
         auto matchScores0 = netOut.toTuple()->elements()[2].toTensor();
         auto matchScores1 = netOut.toTuple()->elements()[3].toTensor();
-        
+  
+        std::vector<double> matchScores;
         for(size_t featIdx = 0; featIdx < matches0.sizes()[1]; ++featIdx)
         {
             auto matchedFeatIdx = matches0[0][featIdx].item<int>();
+            auto matchScore = matchScores0[0][featIdx].item<double>();
+            matchScores.push_back(matchScore);
             // -1 means no matches
-            if(matchedFeatIdx != -1)
+            if(matchedFeatIdx != -1 && matchScore > 0.7)
             {
+                // std::cout << "featIdx: " << featIdx
+                //           << "| matchedFeatIdx: " << matchedFeatIdx
+                //           << "| matchScore: " << matchScore << std::endl; 
                 matches[featIdx] = matchedFeatIdx;
                 // Match match(featIdx, matchedFeatIdx);
                 // matches.push_back(match);
             }
-
         }
+        auto middle = matchScores.size() / 2;
+        std::nth_element(matchScores.begin(), matchScores.begin() + middle, matchScores.end());
+        auto medianScore = matchScores[middle];
+        auto minScore = matchScores[0];
+        auto maxScore = matchScores[matchScores.size()-1];
+
+        std::cout << "medianScore: " << medianScore << std::endl;
+        std::cout << "minScore: " << minScore << std::endl;
+        std::cout << "maxScore: " << maxScore << std::endl;
+
+        // std::cout << "crossCheckPassed: " << crossCheckPassed << std::endl;
+        // std::cout << "matches.size(): " << matches.size() << std::endl;
 
     }
 }
