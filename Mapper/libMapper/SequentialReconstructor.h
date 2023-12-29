@@ -75,9 +75,16 @@ namespace reconstructor::Core
         Eigen::Matrix4d chooseInitialPair(int& imgIdx1, int& imgIdx2);
 
         // 2-view triangulation of all matched features 
-        void triangulateInitialPair(const Eigen::Matrix4d relativePose,
-                                                         const int imgIdx1,
-                                                         const int imgIdx2);
+        void triangulateInitialPair(const int imgIdx1,
+                                    const int imgIdx2);
+
+        // triangulate using 2+ matches
+        void triangulateMultiView(const std::vector<std::pair<int, int>> matchedImgIdFeatId);
+
+        // 
+        void triangulateMatchedLandmarks(const int imgIdx,
+                                         const std::vector<int>& featureIdxs,
+                                         const std::vector<int>& landmarkIdxs);
 
         void addNextView();
 
@@ -127,12 +134,12 @@ namespace reconstructor::Core
         std::unique_ptr<ImageMatcher> imgMatcher;
         std::unique_ptr<GeometricFilter> featFilter;
 
-        
-
         unsigned imgMaxSize = 512;
 
-        double defaultFov = 47.4;
-        double defaultFocalLengthmm = 42.0;
+        double defaultFov = 30.7;
+        double defaultFocalLengthmm = 11.6;
+
+    
 
     };
 

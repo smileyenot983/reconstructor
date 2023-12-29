@@ -245,6 +245,9 @@ namespace reconstructor::Core
         cv::Mat R,t;
         cv::recoverPose(essentialMatCV, featuresCV1, featuresCV2, intrinsicsCV1, R, t);
 
+        std::cout << "R: " << R << std::endl;
+        std::cout << "t: " << t << std::endl;
+                
         for(size_t row = 0; row < 3; ++row)
         {
             for(size_t col = 0; col < 3; ++col)
@@ -301,7 +304,7 @@ namespace reconstructor::Core
 
         for(const auto& [featIdx1, featIdx2] : featMatches)
         {
-            std::cout << "featIdx1: " << featIdx1 << "| featIdx2: " << featIdx2 << std::endl;
+            // std::cout << "featIdx1: " << featIdx1 << "| featIdx2: " << featIdx2 << std::endl;
             // feat
             features1.push_back(features[imgIdx1][featIdx1]);
             features2.push_back(features[imgIdx2][featIdx2]);
@@ -320,14 +323,14 @@ namespace reconstructor::Core
 
     void triangulate2View(const double x1, const double y1,
                           const double x2, const double y2,
-                          const Eigen::Matrix4d& pose1,
-                          const Eigen::Matrix4d& pose2,
+                          const Eigen::Matrix<double, 3, 4>& projection1,
+                          const Eigen::Matrix<double, 3, 4>& projection2,
                           Eigen::Vector3d& landmark)
     {
-        auto row1 = x1 * pose1.row(2) - pose1.row(0);
-        auto row2 = y1 * pose1.row(2) - pose1.row(1);
-        auto row3 = x2 * pose2.row(2) - pose2.row(0);
-        auto row4 = y2 * pose2.row(2) - pose2.row(1);
+        auto row1 = x1 * projection1.row(2) - projection1.row(0);
+        auto row2 = y1 * projection1.row(2) - projection1.row(1);
+        auto row3 = x2 * projection2.row(2) - projection2.row(0);
+        auto row4 = y2 * projection2.row(2) - projection2.row(1);
 
         Eigen::Matrix4d A;
         A.row(0) = row1;
@@ -335,22 +338,14 @@ namespace reconstructor::Core
         A.row(2) = row3;
         A.row(3) = row4;
 
-        // std::cout << "A: " << A << std::endl;
-
-        // Eigen::FullPivLU<Eigen::Matrix4d> lu_decomp(A);
-
         Eigen::JacobiSVD<Eigen::Matrix4d> svd(A, Eigen::ComputeFullV);
-    
-
         landmark = svd.matrixV().col(3).hnormalized();
 
-        // auto landmarkHomogeneous = lu_decomp.kernel();
-
-        // std::cout << "landmarkHomogeneous: " << landmarkHomogeneous << std::endl;
+        std::cout << "2 view singular value: " << svd.singularValues()(3) << std::endl;
+        std::cout << "landmark: " << landmark.transpose() << std::endl; 
     }
 
-    void SequentialReconstructor::triangulateInitialPair(const Eigen::Matrix4d relativePose,
-                                                         const int imgIdx1,
+    void SequentialReconstructor::triangulateInitialPair( const int imgIdx1,
                                                          const int imgIdx2)
     {
         std::cout << "triangulateInitialPair" << std::endl;
@@ -358,48 +353,185 @@ namespace reconstructor::Core
 
         for(const auto& [featIdx1, featIdx2] : matchedFeatIds)
         {
-            auto featPtr1 = features[imgIdx1][featIdx1];
-            auto featPtr2 = features[imgIdx2][featIdx2];
+            std::vector<std::pair<int, int>> matchedImgIdFeatId;
 
-            // project intrinsics into image plane:
-            // featPtr1->featCoord.x
+            matchedImgIdFeatId.push_back(std::make_pair(imgIdx1,featIdx1));
+            matchedImgIdFeatId.push_back(std::make_pair(imgIdx2,featIdx2));
 
-            auto intrinsics1 = reconstructor::Utils::getIntrinsicsMat(defaultFocalLengthmm,
-                                                                 imgShapes[imgIdx1].first,
-                                                                 imgShapes[imgIdx1].second,
-                                                                 defaultFov);
 
-            // u = f_x * x + c_x 
-            double x1 = (featPtr1->featCoord.x - intrinsics1(0,2)) / intrinsics1(0,0);
-            double y1 = (featPtr1->featCoord.y - intrinsics1(1,2)) / intrinsics1(1,1);
+            triangulateMultiView(matchedImgIdFeatId);
 
-            auto intrinsics2 = reconstructor::Utils::getIntrinsicsMat(defaultFocalLengthmm,
-                                                                    imgShapes[imgIdx2].first,
-                                                                    imgShapes[imgIdx2].second,
-                                                                    defaultFov);
 
-            double x2 = (featPtr2->featCoord.x - intrinsics2(0,2)) / intrinsics2(0,0);
-            double y2 = (featPtr2->featCoord.y - intrinsics2(1,2)) / intrinsics2(1,1);
 
-            Eigen::Vector3d landmarkCoords;
-            triangulate2View(x1, y1,
-                             x2, y2,
-                             Eigen::Matrix4d::Identity(),
-                             relativePose,
-                             landmarkCoords);
+            // auto featPtr1 = features[imgIdx1][featIdx1];
+            // auto featPtr2 = features[imgIdx2][featIdx2];
 
-            Landmark landmarkCurr(landmarkCoords(0),landmarkCoords(1), landmarkCoords(2));
-            TriangulatedFeature triangulatedFeature1(imgIdx1, featIdx1);
-            TriangulatedFeature triangulatedFeature2(imgIdx2, featIdx2);
+            // auto intrinsics1 = reconstructor::Utils::getIntrinsicsMat(defaultFocalLengthmm,
+            //                                                      imgShapes[imgIdx1].first,
+            //                                                      imgShapes[imgIdx1].second,
+            //                                                      defaultFov);
 
-            landmarkCurr.triangulatedFeatures.push_back(triangulatedFeature1);
-            landmarkCurr.triangulatedFeatures.push_back(triangulatedFeature2);
+            // auto intrinsics2 = reconstructor::Utils::getIntrinsicsMat(defaultFocalLengthmm,
+            //                                                         imgShapes[imgIdx2].first,
+            //                                                         imgShapes[imgIdx2].second,
+            //                                                         defaultFov);
 
-            landmarks.push_back(landmarkCurr);
+            // auto x1 = (featPtr1->featCoord.x - intrinsics1(0,2)) / intrinsics1(0,0);
+            // auto y1 = (featPtr1->featCoord.y - intrinsics1(1,2)) / intrinsics1(1,1);
+            // auto x2 = (featPtr2->featCoord.x - intrinsics2(0,2)) / intrinsics2(0,0);
+            // auto y2 = (featPtr2->featCoord.y - intrinsics2(1,2)) / intrinsics2(1,1);
+
+            // auto projection1 = Eigen::Matrix4d::Identity().block<3, 4>(0,0);
+            // auto projection2 = relativePose.block<3, 4>(0,0); 
+
+            // auto x1 = featPtr1->featCoord.x;
+            // auto y1 = featPtr1->featCoord.y;
+            // auto x2 = featPtr2->featCoord.x;
+            // auto y2 = featPtr2->featCoord.y;
+
+            // auto projection1 = intrinsics1 * Eigen::Matrix4d::Identity().block<3, 4>(0,0);
+            // auto projection2 = intrinsics2 * relativePose.block<3, 4>(0,0); 
+
+            // Eigen::Vector3d landmarkCoords;
+            // triangulate2View(x1, y1,
+            //                  x2, y2,
+            //                  projection1,
+            //                  projection2,
+            //                  landmarkCoords);
+
+            // Landmark landmarkCurr(landmarkCoords(0),landmarkCoords(1), landmarkCoords(2));
+            // TriangulatedFeature triangulatedFeature1(imgIdx1, featIdx1);
+            // TriangulatedFeature triangulatedFeature2(imgIdx2, featIdx2);
+
+            // landmarkCurr.triangulatedFeatures.push_back(triangulatedFeature1);
+            // landmarkCurr.triangulatedFeatures.push_back(triangulatedFeature2);
+
+            // landmarks.push_back(landmarkCurr);
+
+            // featPtr1->landmarkId = landmarks.size()-1;
+            // featPtr2->landmarkId = landmarks.size()-1;
             
         }
 
         std::cout << "landmarks initial size: " << landmarks.size() << std::endl;
+    }
+
+    void SequentialReconstructor::triangulateMultiView(const std::vector<std::pair<int, int>> matchedImgIdFeatId)
+    {
+        Eigen::MatrixXd A;
+        A.resize(2 * matchedImgIdFeatId.size(), 4);
+
+        for(size_t pairIdx = 0; pairIdx < matchedImgIdFeatId.size(); ++pairIdx)
+        {
+            auto imgIdx = matchedImgIdFeatId[pairIdx].first;
+            auto featIdx = matchedImgIdFeatId[pairIdx].second;
+            
+            auto featPtr = features[imgIdx][featIdx];
+
+            auto intrinsics = reconstructor::Utils::getIntrinsicsMat(defaultFocalLengthmm,
+                                                                 imgShapes[imgIdx].first,
+                                                                 imgShapes[imgIdx].second,
+                                                                 defaultFov);
+
+            auto extrinsics = imgIdx2camPose[imgIdx].block<3,4>(0,0);
+
+            auto projection = intrinsics * extrinsics;
+
+
+            A.row(2*pairIdx) = featPtr->featCoord.x * projection.row(2) - projection.row(0);    
+            A.row(2*pairIdx + 1) = featPtr->featCoord.y * projection.row(2) - projection.row(1);
+        }
+
+        Eigen::JacobiSVD<Eigen::MatrixXd> svd(A, Eigen::ComputeFullV);
+        
+        // if(svd.singularValues()(3) < 100)
+        {
+            auto landmarkCoords = svd.matrixV().col(3).hnormalized();
+
+            std::cout << "svd.singularValues(): " << svd.singularValues() << std::endl;
+            std::cout << "landmarkCoords: " << landmarkCoords << std::endl;
+
+            Landmark landmarkCurr(landmarkCoords(0),landmarkCoords(1), landmarkCoords(2));
+
+            for(size_t pairIdx = 0; pairIdx < matchedImgIdFeatId.size(); ++pairIdx)
+            {
+                auto imgIdx = matchedImgIdFeatId[pairIdx].first;
+                auto featIdx = matchedImgIdFeatId[pairIdx].second;
+
+                TriangulatedFeature triangulatedFeature(imgIdx, featIdx);
+
+                landmarkCurr.triangulatedFeatures.push_back(triangulatedFeature);
+
+                auto featPtr = features[imgIdx][featIdx];
+                featPtr->landmarkId = landmarks.size();
+            }
+
+            landmarks.push_back(landmarkCurr);
+        }
+
+    }
+
+    void SequentialReconstructor::triangulateMatchedLandmarks(const int imgIdx,
+                                                              const std::vector<int>& featureIds,
+                                                              const std::vector<int>& landmarkIds)
+    {
+        // step1. add landmark reference to newly added features
+        for(size_t pairIdx = 0; pairIdx < featureIds.size(); ++pairIdx)
+        {
+            auto featIdx = featureIds[pairIdx];
+            auto landmarkId = landmarkIds[pairIdx];
+
+            TriangulatedFeature feat(imgIdx, featIdx);
+            landmarks[landmarkId].triangulatedFeatures.push_back(feat);
+            features[imgIdx][featIdx]->landmarkId = landmarkId;
+        }
+        
+        // step2. new landmarks creation & triangulation
+        // find those features that were not matched with landmark, 
+        //  if they have any matched feature from other images -> triangulate
+
+        auto imgFeats = features[imgIdx];
+
+        for(size_t featIdx = 0; featIdx < imgFeats.size(); ++featIdx)
+        {
+            auto featPtr = imgFeats[featIdx];
+
+            std::vector<std::pair<int, int>> matchedImgIdFeatId;
+            if(featPtr->landmarkId == -1)
+            {
+                // if not yet triangulated, try to find matches among previously registered images
+                for(const auto& [regImgIdx, regStatus] : registeredImages)
+                {
+                    auto curImgMatches = imgMatches[imgIdx];
+                    // check if img is registerd and matched with cur image
+                    if(regStatus && std::find(curImgMatches.begin(), curImgMatches.end(), regImgIdx) != curImgMatches.end())
+                    {
+                        // check if there is a match for a given featIdx
+                        auto imgPairMatches = featureMatches[std::make_pair(imgIdx, regImgIdx)];
+                        if(imgPairMatches.count(featIdx) != 0)
+                        {
+                            auto matchedFeatId  = imgPairMatches[featIdx];
+
+                            matchedImgIdFeatId.push_back(std::make_pair(regImgIdx, matchedFeatId));
+                        }
+                    }
+                }
+            }
+            
+            if(matchedImgIdFeatId.size() > 0)
+            {
+                matchedImgIdFeatId.push_back(std::make_pair(imgIdx, featIdx));
+
+                std::cout << "matchedImgIdFeatId.size(): " << matchedImgIdFeatId.size() << std::endl;
+                triangulateMultiView(matchedImgIdFeatId);
+            }
+        }
+
+        std::cout << "landmarks.size(): " << landmarks.size() << std::endl;
+
+            
+
+
     }
 
 
@@ -449,14 +581,9 @@ namespace reconstructor::Core
         cv::Mat rotationCV, translationCV;
         cv::Mat inliersCV;
 
-        std::cout << "intrinsicsCV: " << intrinsicsCV << std::endl;
-        std::cout << "landmarksCV.size: " << landmarksCV.size << std::endl;
-        std::cout << "featuresCV.size: " << featuresCV.size << std::endl;
-
-        std::cout << landmarksCV << std::endl;
-        std::cout << featuresCV << std::endl;
-
-        std::cout << "featuresCV.at<double>(4, 0): " << featuresCV.at<double>(4, 0) << std::endl;
+        // std::cout << "intrinsicsCV: " << intrinsicsCV << std::endl;
+        // std::cout << "landmarksCV.size: " << landmarksCV.size << std::endl;
+        // std::cout << "featuresCV.size: " << featuresCV.size << std::endl;
 
         // failed imgIndices : 7, 10, 5 order: 1 8 6 4(fail) 7(fail) 10 2 9(fail) 3 0 5
         cv::solvePnPRansac(landmarksCV,
@@ -466,8 +593,6 @@ namespace reconstructor::Core
                            rotationCV, translationCV,
                            false, 100, 8.0, 0.99,
                            inliersCV);
-
-        std::cout << "solvePnPRansac done " << std::endl;
 
         std::vector<bool> inliers;    
         reconstructor::Utils::writeInliersToVector(inliersCV, inliers);
@@ -505,20 +630,6 @@ namespace reconstructor::Core
             }
         }
 
-        // for(size_t imgIdx = 0; imgIdx < registeredImages.size(); ++imgIdx)
-        // {
-        //     if(registeredImages[imgIdx])
-        //     {
-        //         // add all matched images as candidates
-        //         for(size_t matchedImgIdx = 0; matchedImgIdx < imgMatches[imgIdx].size(); ++matchedImgIdx)
-        //         {
-        //             // add only those that were not yet registered
-        //             if(!registeredImages[matchedImgIdx])
-        //                 nextViewCandidates.insert(matchedImgIdx);
-        //         }
-        //     }
-        // }
-        
         std::cout << "n views sequential reconstruction: " << nextViewCandidates.size() << std::endl;
         // sort possible candidates by number of matches with landmarks 
         std::map<int, int> landmarkMatches2ImageIdx; 
@@ -539,7 +650,6 @@ namespace reconstructor::Core
 
             for(size_t landmarkIdx = 0; landmarkIdx < landmarks.size(); ++landmarkIdx)
             {
-
                 // check all features matched with this landmark:
                 for(const auto& landmarkFeat : landmarks[landmarkIdx].triangulatedFeatures)
                 {
@@ -562,12 +672,6 @@ namespace reconstructor::Core
                             landmarkIds.push_back(landmarkIdx);
                             featureIds.push_back(matchedFeatIdx->second);
 
-                            
-                            
-                            std::cout << "imgIdx: " << imgIdx
-                                      << "| featIdx: " << featIdx
-                                      << "| landmarkIdx: " << landmarkIdx 
-                                      << "| matchedFeatIdx->second: " << matchedFeatIdx->second << std::endl;
 
                             break;
                             // imgIdxToLandmarkIdxs[candidateImgIdx].push_back(landmarkIdx);
@@ -584,14 +688,6 @@ namespace reconstructor::Core
 
             landmarkMatches2ImageIdx[nTriangulatedFeats] = candidateImgIdx;
 
-            std::cout << "candidateImgIdx: " << candidateImgIdx
-                      << "| nTriangulatedFeats: " << nTriangulatedFeats 
-                      << "| total Feats: " << features[candidateImgIdx].size() << std::endl;
-
-            std::cout << "imgIdToLandmarkIds[candidateImgIdx].size(): "
-                      << imgIdToLandmarkIds[candidateImgIdx].size() 
-                      << "imgIdToFeatureIds[candidateImgIdx].size(): "
-                      << imgIdToFeatureIds[candidateImgIdx].size() << std::endl;
         }
 
 
@@ -603,14 +699,24 @@ namespace reconstructor::Core
         // choose image with highest number of matches to landmarks
         auto registeredImgIdx = landmarkMatches2ImageIdx.rbegin()->second;
         
-
-
+        // need [landmark - keypoint] matches for PnP
         registerImagePnP(registeredImgIdx,
                          imgIdToFeatureIds[registeredImgIdx],
                          imgIdToLandmarkIds[registeredImgIdx]);
+
+        // need [keypoint - keypoint] both with poses for triangulation
+        // find all matches for currently registered
+        // triangulateMatchedLandmarks(registeredImgIdx,
+        //                             imgIdToFeatureIds[registeredImgIdx],
+        //                             imgIdToLandmarkIds[registeredImgIdx]);
+
+        
+
+            
         
         registeredImages[registeredImgIdx] = true;
         std::cout << "registering imgIdx: " << registeredImgIdx << std::endl;
+        std::cout << "landmarks.size(): " << landmarks.size() << std::endl;
 
 
 
@@ -651,22 +757,21 @@ namespace reconstructor::Core
         std::cout << "initial pair imgIdx1: " << imgIdx1 
                                << "imgIdx2: " << imgIdx2 << std::endl; 
 
-        triangulateInitialPair(initialPose, imgIdx1, imgIdx2);
+        triangulateInitialPair(imgIdx1, imgIdx2);
+
+        
         std::cout << "landmarks initial size: " << landmarks.size() << std::endl;
 
         // add rest of views via solvepnp
-        for(size_t i = 0; i < imgIds2Paths.size()-2; ++i)
+        // for(size_t i = 0; i < imgIds2Paths.size()-2; ++i)
+        for(size_t i = 0; i < 1; ++i)
         {
             addNextView();
         }
 
-        // 275: 245, 254 : 242
-
-        auto cloudPtr = reconstructor::Utils::landmarksToPclCloud(landmarks);
-        reconstructor::Utils::viewCloud(cloudPtr);
-
-
-
+        auto landmarkCloudPtr = reconstructor::Utils::landmarksToPclCloud(landmarks);
+        auto cameraCloudPtr = reconstructor::Utils::cameraPosesToPclCloud(imgIdx2camPose);
+        reconstructor::Utils::viewCloud(landmarkCloudPtr, cameraCloudPtr);
 
     }
 

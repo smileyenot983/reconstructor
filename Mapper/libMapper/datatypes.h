@@ -82,6 +82,9 @@ namespace reconstructor::Core
 
         FeatCoord<coordType> featCoord;
         FeatDesc featDesc;
+
+        // id of the landmark, corresponding to feature
+        int landmarkId = -1;
     };
 
     template <typename coordType = int>

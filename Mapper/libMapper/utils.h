@@ -65,10 +65,14 @@ cv::Mat eigen3dToCVMat(const Eigen::Matrix3d& eigenMat, int dType = CV_32F);
 Eigen::Matrix3d cvMatToEigen3d(const cv::Mat& cvMat);
 
 // creates cloud from landmarks
-pcl::PointCloud<pcl::PointXYZ>::Ptr landmarksToPclCloud(const std::vector<Landmark>& landmarks);
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Landmark>& landmarks);
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr cameraPosesToPclCloud(const std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose);
+
 
 // visualizes pointcloud
-void viewCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
+void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark,
+               const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera);
 
 void writeInliersToVector(const cv::Mat& inliersCV,
                               std::vector<bool>& inliersVec);
