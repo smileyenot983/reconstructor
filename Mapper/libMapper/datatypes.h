@@ -149,6 +149,8 @@ namespace reconstructor::Core
         double x;
         double y;
         double z;
+
+        bool initialLandmark = false;
     };
 
 

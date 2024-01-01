@@ -10,6 +10,7 @@
 #include "FeatureMatcherSuperglue.h"
 #include "ImageMatcher.h"
 #include "GeometricFilter.h"
+#include "BundleAdjuster.h"
 
 namespace fs = std::filesystem;
 
@@ -79,7 +80,8 @@ namespace reconstructor::Core
                                     const int imgIdx2);
 
         // triangulate using 2+ matches
-        void triangulateMultiView(const std::vector<std::pair<int, int>> matchedImgIdFeatId);
+        void triangulateMultiView(const std::vector<std::pair<int, int>> matchedImgIdFeatId,
+                                  bool initialCloud = false);
 
         // 
         void triangulateMatchedLandmarks(const int imgIdx,
@@ -89,12 +91,14 @@ namespace reconstructor::Core
         void addNextView();
 
         // registers image via solving pnp
-        void registerImagePnP(const int imgIdx,
+        Eigen::Matrix4d registerImagePnP(const int imgIdx,
                               const std::vector<int>& featureIdxs,
                               const std::vector<int>& landmarkIdxs);
 
         // geometrically filters
         void filterFeatureMatches();
+
+        void adjustBundle();
 
         // performs end2end reconstruction
         void reconstruct(const std::string& imgFolder,
@@ -127,7 +131,8 @@ namespace reconstructor::Core
         std::unordered_map< std::pair<int, int>, std::unordered_map<int, int>, pair_hash > featureMatches;
 
         // stores images sizes(necessary for feature coords normalization on superglue)
-        std::vector<std::pair<int, int>> imgShapes;
+        // std::vector<std::pair<int, int>> imgShapes;
+        std::unordered_map<int, std::pair<int, int>> imgIdx2imgShape;
 
         std::unique_ptr<FeatureDetector> featDetector;
         std::unique_ptr<FeatureMatcher> featMatcher;
