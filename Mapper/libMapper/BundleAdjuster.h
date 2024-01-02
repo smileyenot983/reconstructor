@@ -76,10 +76,12 @@ class BundleAdjuster
 {
 public:
     // TODO: replace with map.find instead of [] to be able to pass const reference
-    std::vector<Eigen::Vector3d> adjust(std::unordered_map<int, std::vector<FeaturePtr<>>>& features,
+    void adjust(std::unordered_map<int, std::vector<FeaturePtr<>>>& features,
                 std::vector<Landmark>& landmarks,
                 std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
                 std::unordered_map<int, std::pair<int,int>> imgIdx2imgShape,
+                std::vector<Eigen::Vector3d>& landmarksUpdated,
+                std::vector<Eigen::Vector3d>& cameraPosesUpdated,
                 double defaultFov = 30.7,
                 double defaultFocalLengthmm = 11.6);
 

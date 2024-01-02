@@ -6,10 +6,12 @@
 namespace reconstructor::Core
 {
 
-std::vector<Eigen::Vector3d> BundleAdjuster::adjust(std::unordered_map<int, std::vector<FeaturePtr<>>>& features,
+void BundleAdjuster::adjust(std::unordered_map<int, std::vector<FeaturePtr<>>>& features,
                             std::vector<Landmark>& landmarks,
                             std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
                             std::unordered_map<int, std::pair<int,int>> imgIdx2imgShape,
+                            std::vector<Eigen::Vector3d>& landmarksUpdated,
+                            std::vector<Eigen::Vector3d>& cameraPosesUpdated,
                             double defaultFov,
                             double defaultFocalLengthmm)
 {
@@ -105,7 +107,7 @@ std::vector<Eigen::Vector3d> BundleAdjuster::adjust(std::unordered_map<int, std:
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_SCHUR;
     options.minimizer_progress_to_stdout = true;
-    options.max_num_iterations = 300;
+    options.max_num_iterations = 50;
 
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
@@ -116,7 +118,7 @@ std::vector<Eigen::Vector3d> BundleAdjuster::adjust(std::unordered_map<int, std:
     std::cout << "after opt. extrinsicsArray[2]: " << extrinsic_params[2] << std::endl;
 
     // update landmarks 
-    std::vector<Eigen::Vector3d> updatedLandmarks;
+    // std::vector<Eigen::Vector3d> updatedLandmarks;
 
     for(size_t i = 0; i < nTotalLandmarks; ++i)
     {
@@ -124,10 +126,18 @@ std::vector<Eigen::Vector3d> BundleAdjuster::adjust(std::unordered_map<int, std:
                                     landmark_params[3 * i + 1],
                                     landmark_params[3 * i + 2]);
 
-        updatedLandmarks.push_back(updLandmark);
+        landmarksUpdated.push_back(updLandmark);
     }
 
-    return updatedLandmarks;
+    for(size_t i = 0; i < nTotalCameras; ++i)
+    {
+        Eigen::Vector3d updPose(extrinsic_params[6 * i + 3],
+                                extrinsic_params[6 * i + 4],
+                                extrinsic_params[6 * i + 5]);
+
+        cameraPosesUpdated.push_back(updPose);
+    }
+
 }
 
 

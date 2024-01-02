@@ -257,6 +257,24 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Lan
     return landmark_cloud;
 }
 
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr vectorToPclCloud(const std::vector<Eigen::Vector3d>& vec,
+                                                        int red, int green, int blue)
+{
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+    for(const auto& eigenPt : vec)
+    {
+        pcl::PointXYZRGB pt(red, green, blue);
+        pt.x = eigenPt(0);
+        pt.y = eigenPt(1);
+        pt.z = eigenPt(2);
+
+        cloud->push_back(pt);
+    }
+
+    return cloud;
+}
+
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr cameraPosesToPclCloud(const std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose)
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr camera_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -265,19 +283,19 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cameraPosesToPclCloud(const std::unordere
     {
         Eigen::Vector3d translationVector = camPose.block<3, 1>(0, 3);
 
-        pcl::PointXYZRGB pt(0, 253, 0);
+        pcl::PointXYZRGB pt(253, 0, 0);
         pt.x = translationVector(0);
         pt.y = translationVector(1);
         pt.z = translationVector(2);
         camera_cloud->points.push_back(pt);
     }
 
-    std::cout << "camera_cloud->points[0]: " << camera_cloud->points[0] << std::endl;
-    std::cout << "camera_cloud->points[1]: " << camera_cloud->points[1] << std::endl;
-    std::cout << "camera_cloud->points[2]: " << camera_cloud->points[2] << std::endl;
-    std::cout << "camera_cloud->points[3]: " << camera_cloud->points[3] << std::endl;
-    std::cout << "camera_cloud->points[4]: " << camera_cloud->points[4] << std::endl;
-    std::cout << "camera_cloud->points[5]: " << camera_cloud->points[5] << std::endl;
+    // std::cout << "camera_cloud->points[0]: " << camera_cloud->points[0] << std::endl;
+    // std::cout << "camera_cloud->points[1]: " << camera_cloud->points[1] << std::endl;
+    // std::cout << "camera_cloud->points[2]: " << camera_cloud->points[2] << std::endl;
+    // std::cout << "camera_cloud->points[3]: " << camera_cloud->points[3] << std::endl;
+    // std::cout << "camera_cloud->points[4]: " << camera_cloud->points[4] << std::endl;
+    // std::cout << "camera_cloud->points[5]: " << camera_cloud->points[5] << std::endl;
 
     return camera_cloud;
 
@@ -313,7 +331,8 @@ void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark,
 using namespace std::chrono_literals;
 void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark1,
                 const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark2,
-               const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera)
+               const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera1,
+               const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera2)
 {
     // pcl::visualization::CloudViewer viewer("Cloud Viewer");
     // viewer.showCloud(cloudLandmark, "cloudLandmark");
@@ -327,8 +346,11 @@ void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark1,
     viewer->addPointCloud<pcl::PointXYZRGB>(cloudLandmark2, "cloud_landmark2");
     viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "cloud_landmark2");
 
-    viewer->addPointCloud<pcl::PointXYZRGB>(cloudCamera, "cloud_camera");
-    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 10, "cloud_camera");
+    viewer->addPointCloud<pcl::PointXYZRGB>(cloudCamera1, "cloud_camera1");
+    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 10, "cloud_camera1");
+    
+    viewer->addPointCloud<pcl::PointXYZRGB>(cloudCamera2, "cloud_camera2");
+    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 10, "cloud_camera2");
 
     viewer->setBackgroundColor(0.1, 0.1, 0.1);
     viewer->initCameraParameters();

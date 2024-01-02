@@ -71,6 +71,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Lan
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr cameraPosesToPclCloud(const std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose);
 
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr vectorToPclCloud(const std::vector<Eigen::Vector3d>& vec,
+                                                        int red, int green, int blue);
 
 // visualizes pointcloud
 void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark,
@@ -78,7 +80,8 @@ void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark,
 
 void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark1,
                 const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark2,
-               const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera);
+               const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera1, 
+               const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera2);
 
 void writeInliersToVector(const cv::Mat& inliersCV,
                               std::vector<bool>& inliersVec);

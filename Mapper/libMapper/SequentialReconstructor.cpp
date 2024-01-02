@@ -231,8 +231,8 @@ namespace reconstructor::Core
                     for(const auto& [featIdx1, featIdx2] : curMatches)
                     {
                         
-                        std::cout << "matches: " << featureMatches[curPair][featIdx1] << std::endl;
-                        std::cout << "curMatches: " << curMatches[featIdx1] << std::endl;
+                        // std::cout << "matches: " << featureMatches[curPair][featIdx1] << std::endl;
+                        // std::cout << "curMatches: " << curMatches[featIdx1] << std::endl;
                     }
 
                     // featureMatches[curPair] = curMatches;
@@ -444,8 +444,6 @@ namespace reconstructor::Core
             // std::cout << "svd.singularValues().transpose()" << svd.singularValues().transpose() << std::endl;
             // std::cout << "landmarkCoords.transpose(): " << landmarkCoords.transpose() << std::endl;
              
-
-
             for(size_t pairIdx = 0; pairIdx < matchedImgIdFeatId.size(); ++pairIdx)
             {
                 auto imgIdx = matchedImgIdFeatId[pairIdx].first;
@@ -464,9 +462,14 @@ namespace reconstructor::Core
                 auto residualX = abs(landmarkProjectionX - features[imgIdx][featIdx]->featCoord.x);
                 auto residualY = abs(landmarkProjectionY - features[imgIdx][featIdx]->featCoord.y);
 
+                auto residualTotal = residualX + residualY; 
                 std::cout << "imgIdx: " << imgIdx << "| featIdx: " << featIdx 
-                          << "| residualX: " << residualX 
-                          << "| residualY: " << residualY << std::endl;
+                          << "| residual: " << residualX + residualY << std::endl;  
+
+                if(residualTotal > 10)
+                {
+                    return;
+                }
 
                 TriangulatedFeature triangulatedFeature(imgIdx, featIdx);
 
@@ -549,9 +552,6 @@ namespace reconstructor::Core
         }
 
         std::cout << "landmarks.size(): " << landmarks.size() << std::endl;
-
-            
-
 
     }
 
@@ -796,28 +796,42 @@ namespace reconstructor::Core
         
         std::cout << "landmarks initial size: " << landmarks.size() << std::endl;
 
+        
+
+
+        std::vector<Eigen::Vector3d> landmarksUpdated;
+        std::vector<Eigen::Vector3d> cameraPosesUpdated;
         // add rest of views via solvepnp
         for(size_t i = 0; i < imgIds2Paths.size()-2; ++i)
         {
+
+            landmarksUpdated.clear();
+            cameraPosesUpdated.clear();
             addNextView();
         }
 
         BundleAdjuster bundleAdjuster;
+        bundleAdjuster.adjust(features,
+                                landmarks,
+                                imgIdx2camPose,
+                                imgIdx2imgShape,
+                                landmarksUpdated,
+                                cameraPosesUpdated,
+                                defaultFocalLengthmm,
+                                defaultFov);
 
-        auto landmarksUpdated = bundleAdjuster.adjust(features,
-                              landmarks,
-                              imgIdx2camPose,
-                              imgIdx2imgShape,
-                              defaultFocalLengthmm,
-                              defaultFov);
+        std::cout << "landmarksUpdated.size(): " << landmarksUpdated.size() << std::endl;
+        std::cout << "cameraPosesUpdated.size(): " << cameraPosesUpdated.size() << std::endl;
 
         auto landmarkCloudPtrBefore = reconstructor::Utils::landmarksToPclCloud(landmarks);
-        auto landmarkCloudPtrAfter = reconstructor::Utils::landmarksToPclCloud(landmarksUpdated);
-        auto cameraCloudPtr = reconstructor::Utils::cameraPosesToPclCloud(imgIdx2camPose);
+        auto cameraCloudPtrBefore = reconstructor::Utils::cameraPosesToPclCloud(imgIdx2camPose);
 
-        // auto landmarkCloudPtr = reconstructor::Utils::landmarksToPclCloud(landmarks);
-        // auto cameraCloudPtr = reconstructor::Utils::cameraPosesToPclCloud(imgIdx2camPose);
-        reconstructor::Utils::viewCloud(landmarkCloudPtrBefore, landmarkCloudPtrAfter, cameraCloudPtr);
+        auto landmarkCloudPtrAfter = reconstructor::Utils::vectorToPclCloud(landmarksUpdated, 0, 253, 0);
+        auto cameraCloudPtrAfter = reconstructor::Utils::vectorToPclCloud(cameraPosesUpdated, 0, 253, 0);
+
+        
+        reconstructor::Utils::viewCloud(landmarkCloudPtrAfter, cameraCloudPtrAfter);
+        // reconstructor::Utils::viewCloud(landmarkCloudPtrBefore, landmarkCloudPtrAfter, cameraCloudPtrBefore, cameraCloudPtrAfter);
 
     }
 
