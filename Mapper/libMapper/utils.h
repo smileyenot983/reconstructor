@@ -57,6 +57,10 @@ Eigen::Matrix3d getIntrinsicsMat(const double focalLengthmm,
                                  const int imgWidth,
                                  const double fovDegrees);
 
+Eigen::Matrix3d getIntrinsicsMat(const double focalLengthPx,
+                                 const int imgHeight,
+                                 const int imgWidth);
+
 
 std::vector<cv::Point2f> featuresToCvPoints(const std::vector<FeaturePtr<>>& features);
 
@@ -67,9 +71,11 @@ Eigen::Matrix3d cvMatToEigen3d(const cv::Mat& cvMat);
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Eigen::Vector3d>& landmarks);
 
 // creates cloud from landmarks
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Landmark>& landmarks);
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Landmark>& landmarks,
+                                                           int red = 0, int green = 253, int blue = 0);
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr cameraPosesToPclCloud(const std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose);
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr cameraPosesToPclCloud(const std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
+                                                              int red = 253, int green = 0, int blue = 0);
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr vectorToPclCloud(const std::vector<Eigen::Vector3d>& vec,
                                                         int red, int green, int blue);
@@ -85,5 +91,10 @@ void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark1,
 
 void writeInliersToVector(const cv::Mat& inliersCV,
                               std::vector<bool>& inliersVec);
+
+
+void saveCloud(std::vector<Landmark>& landmarks,
+               std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
+               const std::string& cloudPath);
 
 }

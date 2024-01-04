@@ -82,8 +82,7 @@ public:
                 std::unordered_map<int, std::pair<int,int>> imgIdx2imgShape,
                 std::vector<Eigen::Vector3d>& landmarksUpdated,
                 std::vector<Eigen::Vector3d>& cameraPosesUpdated,
-                double defaultFov = 30.7,
-                double defaultFocalLengthmm = 11.6);
+                double defaultFocalLengthPx = 500);
 
 };
 

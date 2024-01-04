@@ -12,8 +12,7 @@ void BundleAdjuster::adjust(std::unordered_map<int, std::vector<FeaturePtr<>>>& 
                             std::unordered_map<int, std::pair<int,int>> imgIdx2imgShape,
                             std::vector<Eigen::Vector3d>& landmarksUpdated,
                             std::vector<Eigen::Vector3d>& cameraPosesUpdated,
-                            double defaultFov,
-                            double defaultFocalLengthmm)
+                            double defaultFocalLengthPx)
 {
     auto defaultImageHeight = 384.0;
     auto defaultImageWidth = 512.0;
@@ -38,29 +37,34 @@ void BundleAdjuster::adjust(std::unordered_map<int, std::vector<FeaturePtr<>>>& 
     std::unordered_map<int, int> observation2Camera;
     std::unordered_map<int, int> observation2Landmark;
 
+
+    std::unordered_map<int, int> camGlobal2LocalIdx;
+    int camLocalIdx = 0;
     for(const auto& [camIdx, camPose] : imgIdx2camPose)
     {
-        std::cout << "camIdx: " << camIdx << std::endl;
-        std::cout << "camPose: " << camPose << std::endl;
+        
+        // std::cout << "camIdx: " << camIdx << std::endl;
+        // std::cout << "camPose: " << camPose << std::endl;
 
         Eigen::AngleAxisd angleAxis;
         angleAxis.fromRotationMatrix(camPose.block<3,3>(0,0));
 
-        extrinsic_params[6 * camIdx] = angleAxis.axis()(0) * angleAxis.angle();
-        extrinsic_params[6 * camIdx + 1] = angleAxis.axis()(1) * angleAxis.angle();
-        extrinsic_params[6 * camIdx + 2] = angleAxis.axis()(2) * angleAxis.angle();
-        extrinsic_params[6 * camIdx + 3] = camPose(0,3);
-        extrinsic_params[6 * camIdx + 4] = camPose(1,3);
-        extrinsic_params[6 * camIdx + 5] = camPose(2,3);
+        extrinsic_params[6 * camLocalIdx] = angleAxis.axis()(0) * angleAxis.angle();
+        extrinsic_params[6 * camLocalIdx + 1] = angleAxis.axis()(1) * angleAxis.angle();
+        extrinsic_params[6 * camLocalIdx + 2] = angleAxis.axis()(2) * angleAxis.angle();
+        extrinsic_params[6 * camLocalIdx + 3] = camPose(0,3);
+        extrinsic_params[6 * camLocalIdx + 4] = camPose(1,3);
+        extrinsic_params[6 * camLocalIdx + 5] = camPose(2,3);
 
-        auto intrinsics = reconstructor::Utils::getIntrinsicsMat(defaultFocalLengthmm,
-                                            imgIdx2imgShape[camIdx].first,
-                                            imgIdx2imgShape[camIdx].second,
-                                            defaultFov);
+        auto intrinsics = reconstructor::Utils::getIntrinsicsMat(defaultFocalLengthPx,
+                                                                 imgIdx2imgShape[camIdx].first,
+                                                                 imgIdx2imgShape[camIdx].second);
 
-        intrinsic_params[3 * camIdx] = intrinsics(0,0);
-        intrinsic_params[3 * camIdx + 1] = intrinsics(0,2);
-        intrinsic_params[3 * camIdx + 2] = intrinsics(1,2);
+        intrinsic_params[3 * camLocalIdx] = intrinsics(0,0);
+        intrinsic_params[3 * camLocalIdx + 1] = intrinsics(0,2);
+        intrinsic_params[3 * camLocalIdx + 2] = intrinsics(1,2);
+
+        camGlobal2LocalIdx[camIdx] = camLocalIdx;
     }
 
     for(size_t i = 0; i < landmarks.size(); ++i)
@@ -80,6 +84,8 @@ void BundleAdjuster::adjust(std::unordered_map<int, std::vector<FeaturePtr<>>>& 
             auto imgIdx = landmarks[landmarkId].triangulatedFeatures[featId].imgIdx;
             auto featIdx = landmarks[landmarkId].triangulatedFeatures[featId].featIdx;
 
+            auto imgIdxLocal = camGlobal2LocalIdx[imgIdx];
+
             // observation2Landmark[lastObservation] = landmarkId;
             // observation2Camera[lastObservation] = imgIdx;
             
@@ -92,17 +98,13 @@ void BundleAdjuster::adjust(std::unordered_map<int, std::vector<FeaturePtr<>>>& 
 
             problem.AddResidualBlock(cost_function,
                                      nullptr,
-                                     extrinsic_params + imgIdx * 6,
-                                     intrinsic_params + imgIdx * 3,
+                                     extrinsic_params + imgIdxLocal * 6,
+                                     intrinsic_params + imgIdxLocal * 3,
                                      landmark_params + landmarkId * 3);
 
             ++lastObservation;
         }
     }
-
-    std::cout << "before opt. extrinsicsArray[0]: " << extrinsic_params[0] << std::endl;
-    std::cout << "before opt. extrinsicsArray[1]: " << extrinsic_params[1] << std::endl;
-    std::cout << "before opt. extrinsicsArray[2]: " << extrinsic_params[2] << std::endl;
 
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_SCHUR;
@@ -112,10 +114,6 @@ void BundleAdjuster::adjust(std::unordered_map<int, std::vector<FeaturePtr<>>>& 
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
     std::cout << summary.FullReport() << std::endl;
-
-    std::cout << "after opt. extrinsicsArray[0]: " << extrinsic_params[0] << std::endl;
-    std::cout << "after opt. extrinsicsArray[1]: " << extrinsic_params[1] << std::endl;
-    std::cout << "after opt. extrinsicsArray[2]: " << extrinsic_params[2] << std::endl;
 
     // update landmarks 
     // std::vector<Eigen::Vector3d> updatedLandmarks;

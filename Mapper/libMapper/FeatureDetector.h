@@ -3,6 +3,8 @@
 #include <vector>
 
 #include "opencv2/features2d.hpp"
+#include <opencv2/xfeatures2d/nonfree.hpp>
+
 // #include "opencv2/xfeatures2d.hpp"
 
 #include "datatypes.h"
@@ -54,6 +56,7 @@ namespace reconstructor::Core
 
     private:
         cv::Ptr<cv::ORB> orbDetector;
+        cv::Ptr<cv::SIFT> siftDetector;
 
         int inputImgType = CV_8U;
     };

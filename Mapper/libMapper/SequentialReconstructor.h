@@ -60,7 +60,6 @@ namespace reconstructor::Core
 
         // used for performing feature detection on all images in folder
         void detectFeatures();
-        void drawFeaturesAndSave(const std::string& outFolder);
 
         // creates pairs of images for feature matching
         void matchImages();
@@ -83,6 +82,8 @@ namespace reconstructor::Core
         void triangulateMultiView(const std::vector<std::pair<int, int>> matchedImgIdFeatId,
                                   bool initialCloud = false);
 
+        void triangulateCV(const std::vector<std::pair<int, int>> matchedImgIdFeatId);
+
         // 
         void triangulateMatchedLandmarks(const int imgIdx,
                                          const std::vector<int>& featureIdxs,
@@ -95,6 +96,10 @@ namespace reconstructor::Core
                               const std::vector<int>& featureIdxs,
                               const std::vector<int>& landmarkIdxs);
 
+        // Eigen::Matrix4d registerImagePnpCustom(const int imgIdx,
+        //                                         const std::vector<int>& featureIdxs,
+        //                                         const std::vector<int>& landmarkIdxs);
+
         // geometrically filters
         void filterFeatureMatches();
 
@@ -103,6 +108,9 @@ namespace reconstructor::Core
         // performs end2end reconstruction
         void reconstruct(const std::string& imgFolder,
                          const std::string& outFolder);
+
+        Eigen::Matrix3d getIntrinsics(const int imgHeight,
+                           const int imgWidth);
     
     private:
 
@@ -144,7 +152,7 @@ namespace reconstructor::Core
         double defaultFov = 30.7;
         double defaultFocalLengthmm = 11.6;
 
-    
+        double defaultFocalLengthPx = 2759.48 / 6;
 
     };
 
