@@ -16,14 +16,16 @@ also a cpp wrapper over SuperGlue matcher(https://github.com/magicleap/SuperGlue
 4. Initial img pair choice and initial triangulation
 5. Separate class for end2end reconstruction
 6. Img matcher(which for now assumes all images are matched)
-7. 3d visualization of reconstructed cloud(up to scale)
+7. 3d visualization of reconstructed cloud(up to scale) + camera positions
+8. incremental reconstruction via pnp + BA
 
 # todo:
 
-1. incremental reconstruction via pnp + optionally BA
-2. global BA
-3. image matcher(apply some image retrieval, FAISS, metric learning)
-4. visualization of camera positions(optionally)
+1. image matcher(apply some image retrieval, FAISS, metric learning)
+2. use openmp/tbb to make it faster
+3. code refactoring + add comments
+4. make colored pointcloud + save in meshlab format
+
 
 # todo later:
 
