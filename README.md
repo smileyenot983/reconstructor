@@ -8,6 +8,12 @@ This project is aimed for 3d reconstruction(sparse up-to scale cloud + camera po
 At the moment there is cpp a wrapper over SuperPoint(https://github.com/magicleap/SuperPointPretrainedNetwork), 
 also a cpp wrapper over SuperGlue matcher(https://github.com/magicleap/SuperGluePretrainedNetwork)
 
+# reconstructor results(on images in data folder)
+
+![Before global bundle adjustment](./beforeBA.jpg)
+
+![After global bundle adjustment](./afterBA.jpg)
+
 # what is done at the moment
 
 1. 2 feature extractors: SuperPoint, ORB + BaseClass for possible extension
