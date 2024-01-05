@@ -24,7 +24,7 @@ struct ReprojectionError
 
     // [u,v] = intrinsics * extrinsics * [X, Y, Z]
     // with extrinsics(landmark in camera frame): p_c = R * p_w + t
-
+    // intrinsics = [fx, fy, cx, cy, k1, k2]
     template <typename T>
     bool operator()(const T* cameraPose,
                     const T* cameraIntrinsics,
@@ -42,10 +42,15 @@ struct ReprojectionError
         T landmarkImagePlaneX = landmarkCamFrame[0] /= landmarkCamFrame[2];
         T landmarkImagePlaneY = landmarkCamFrame[1] /= landmarkCamFrame[2];
 
-        // 2. apply intrinsics(fx,fy,cx,cy)
+        T radius = landmarkImagePlaneX * landmarkImagePlaneX + landmarkImagePlaneY * landmarkImagePlaneY;
+        T distortion = cameraIntrinsics[4] * radius + cameraIntrinsics[5] * radius * radius;
 
-        T predicted_u = cameraIntrinsics[0] * landmarkCamFrame[0] + cameraIntrinsics[1];
-        T predicted_v = cameraIntrinsics[0] * landmarkCamFrame[1] + cameraIntrinsics[2];
+        T landmarkDistortedX = landmarkImagePlaneX + distortion;
+        T landmarkDistortedY = landmarkImagePlaneY + distortion; 
+
+        // 2. apply intrinsics(fx,fy,cx,cy)
+        T predicted_u = cameraIntrinsics[0] * landmarkDistortedX + cameraIntrinsics[2];
+        T predicted_v = cameraIntrinsics[1] * landmarkDistortedY + cameraIntrinsics[3];
 
         // calculate residuals
         residuals[0] = predicted_u - observed_u;
@@ -58,7 +63,7 @@ struct ReprojectionError
     static ceres::CostFunction* Create(const double observed_u,
                                        const double observed_v)
     {
-        return (new ceres::AutoDiffCostFunction<ReprojectionError, 2, 6, 3, 3>(
+        return (new ceres::AutoDiffCostFunction<ReprojectionError, 2, 6, 6, 3>(
                     new ReprojectionError(observed_u, 
                                           observed_v)));
     }
@@ -76,13 +81,11 @@ class BundleAdjuster
 {
 public:
     // TODO: replace with map.find instead of [] to be able to pass const reference
-    void adjust(std::unordered_map<int, std::vector<FeaturePtr<>>>& features,
-                std::vector<Landmark>& landmarks,
-                std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
-                std::unordered_map<int, std::pair<int,int>> imgIdx2imgShape,
-                std::vector<Eigen::Vector3d>& landmarksUpdated,
-                std::vector<Eigen::Vector3d>& cameraPosesUpdated,
-                double defaultFocalLengthPx = 500);
+    std::unordered_map<int, int> adjust(std::unordered_map<int, std::vector<FeaturePtr<>>>& features,
+                                        std::vector<Landmark>& landmarks,
+                                        std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
+                                        std::unordered_map<int, PinholeCamera> imgIdx2camIntrinsics,
+                                        std::vector<int> imgIdxOrder);
 
 };
 

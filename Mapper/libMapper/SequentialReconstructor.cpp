@@ -55,14 +55,26 @@ namespace reconstructor::Core
         for(const auto& [imgId, imgPath] : imgIds2Paths)
         {
             std::cout << "imgId: " << imgId << std::endl;
-            auto imgGray = reconstructor::Utils::readGrayImg(imgPath, imgMaxSize);
-            auto imgPrepared = featDetector->prepImg(imgGray);
-            std::cout << "imgPrepared.size: " << imgPrepared.size << std::endl;
+            // auto imgGray = reconstructor::Utils::readGrayImg(imgPath, imgMaxSize);
+            auto imgOriginal = reconstructor::Utils::readImg(imgPath, imgMaxSize);
+            cv::Mat imgGray;
+            cv::cvtColor(imgOriginal, imgGray, cv::COLOR_RGB2GRAY);
 
+            auto imgPrepared = featDetector->prepImg(imgGray);
             imgIdx2imgShape[imgId] = std::make_pair(imgPrepared.rows, imgPrepared.cols);
 
             std::vector<FeaturePtr<>> imgFeatures;
             featDetector->detect(imgPrepared, imgFeatures);
+
+            // extract colors corresponding to each feature:
+            for(auto& featPtr : imgFeatures)
+            {
+                auto featColor = imgOriginal.at<cv::Vec3b>(featPtr->featCoord.y, featPtr->featCoord.x);
+
+                featPtr->featColor.red = featColor[0];
+                featPtr->featColor.green = featColor[1];
+                featPtr->featColor.blue = featColor[2];
+            }
 
             // features.push_back(imgFeatures);
             features[imgId] = imgFeatures;
@@ -259,8 +271,8 @@ namespace reconstructor::Core
     void essentialMatToPose(const Eigen::Matrix3d& essentialMat,
                              const std::vector<FeaturePtr<>>& features1,
                              const std::vector<FeaturePtr<>>& features2,
-                             const Eigen::Matrix3d& intrinsics1,
-                             const Eigen::Matrix3d& intrinsics2,
+                             const PinholeCamera& intrinsics1,
+                             const PinholeCamera& intrinsics2,
                              Eigen::Matrix4d& relativePose)
     {
         auto essentialMatCV = reconstructor::Utils::eigen3dToCVMat(essentialMat, CV_64F);
@@ -268,11 +280,19 @@ namespace reconstructor::Core
         auto featuresCV1 = reconstructor::Utils::featuresToCvPoints(features1);
         auto featuresCV2 = reconstructor::Utils::featuresToCvPoints(features2);
 
-        auto intrinsicsCV1 = reconstructor::Utils::eigen3dToCVMat(intrinsics1);
-        auto intrinsicsCV2 = reconstructor::Utils::eigen3dToCVMat(intrinsics2);
+        // auto intrinsicsCV1 = reconstructor::Utils::eigen3dToCVMat(intrinsics1);
+        // auto intrinsicsCV2 = reconstructor::Utils::eigen3dToCVMat(intrinsics2);
+
+        auto intrinsicsCV1 = intrinsics1.getMatrixCV();
+        auto distortCV1 = intrinsics1.getDistortCV();
+
+        auto intrinsicsCV2 = intrinsics2.getMatrixCV();
+        auto distortCV2 = intrinsics2.getDistortCV();
+
 
         cv::Mat R,t;
-        cv::recoverPose(essentialMatCV, featuresCV1, featuresCV2, intrinsicsCV1, R, t);
+        // cv::recoverPose(essentialMatCV, featuresCV1, featuresCV2, intrinsicsCV1, R, t);
+        cv::recoverPose(featuresCV1, featuresCV2, intrinsicsCV1, distortCV1, intrinsicsCV2, distortCV2, essentialMatCV, R, t);
 
         std::cout << "R: " << R << std::endl;
         std::cout << "t: " << t << std::endl;
@@ -313,11 +333,18 @@ namespace reconstructor::Core
         imgIdx2 = featureMatchesVec[0].first.second;
 
         // backproject feature coords(K^{-1}*x)
-        auto intrinsics1 = getIntrinsics(imgIdx2imgShape[imgIdx1].first,
-                                         imgIdx2imgShape[imgIdx1].second);
+        PinholeCamera intrinsics1(imgIdx2imgShape[imgIdx1].first,
+                                  imgIdx2imgShape[imgIdx1].second,
+                                  defaultFocalLengthPx,
+                                  defaultFocalLengthPx);
 
-        auto intrinsics2 = getIntrinsics(imgIdx2imgShape[imgIdx2].first,
-                                         imgIdx2imgShape[imgIdx2].second);
+        PinholeCamera intrinsics2(imgIdx2imgShape[imgIdx2].first,
+                                  imgIdx2imgShape[imgIdx2].second,
+                                  defaultFocalLengthPx,
+                                  defaultFocalLengthPx);
+
+        imgIdx2camIntrinsics[imgIdx1] = intrinsics1;
+        imgIdx2camIntrinsics[imgIdx2] = intrinsics2;
 
         // extract matches between given images:
         auto imgPair = std::make_pair(imgIdx1, imgIdx2);
@@ -413,12 +440,7 @@ namespace reconstructor::Core
         auto imgIdx2 = matchedImgIdFeatId[1].first;
         auto featIdx2 = matchedImgIdFeatId[1].second;
 
-        auto intrinsics1 = getIntrinsics(imgIdx2imgShape[imgIdx1].first,
-                                        imgIdx2imgShape[imgIdx1].second);
-
-        auto intrinsics2 = getIntrinsics(imgIdx2imgShape[imgIdx2].first,
-                                         imgIdx2imgShape[imgIdx2].second);
-
+        auto camera1 = imgIdx2camIntrinsics[imgIdx1];
         auto extrinsics1 = imgIdx2camPose[imgIdx1];
         cv::Mat projection1(3, 4, CV_64F);
         for(size_t i = 0; i < 3; ++i)
@@ -430,6 +452,7 @@ namespace reconstructor::Core
             projection1.at<double>(i,3) = extrinsics1(i,3);
         }
 
+        auto camera2 = imgIdx2camIntrinsics[imgIdx2];
         auto extrinsics2 = imgIdx2camPose[imgIdx2];
         cv::Mat projection2(3, 4, CV_64F);
         for(size_t i = 0; i < 3; ++i)
@@ -463,19 +486,19 @@ namespace reconstructor::Core
             
             auto featPtr = features[imgIdx][featIdx];
 
-            auto intrinsics = getIntrinsics(imgIdx2imgShape[imgIdx].first,
-                                            imgIdx2imgShape[imgIdx].second);
-
             auto extrinsics = imgIdx2camPose[imgIdx].block<3,4>(0,0);
+            auto intrinsics = imgIdx2camIntrinsics[imgIdx];
 
             auto projection = extrinsics;
 
+            auto coord3d = intrinsics.unproject(Eigen::Vector2d(featPtr->featCoord.x,
+                                                                featPtr->featCoord.y));
             // project on camera plane
-            auto xCoord = (featPtr->featCoord.x - intrinsics(0,2))/intrinsics(0,0);
-            auto yCoord = (featPtr->featCoord.y - intrinsics(1,2))/intrinsics(1,1);
+            // auto xCoord = (featPtr->featCoord.x - intrinsics(0,2))/intrinsics(0,0);
+            // auto yCoord = (featPtr->featCoord.y - intrinsics(1,2))/intrinsics(1,1);
 
-            A.row(2*pairIdx) = xCoord * projection.row(2) - projection.row(0);    
-            A.row(2*pairIdx + 1) = yCoord * projection.row(2) - projection.row(1);
+            A.row(2*pairIdx) = coord3d(0) * projection.row(2) - projection.row(0);    
+            A.row(2*pairIdx + 1) = coord3d(1) * projection.row(2) - projection.row(1);
         }
 
         Eigen::JacobiSVD<Eigen::MatrixXd> svd(A, Eigen::ComputeFullV);
@@ -484,10 +507,19 @@ namespace reconstructor::Core
         {
             auto landmarkCoords = svd.matrixV().col(3).hnormalized();
 
+            if(landmarkCoords(2) < 0 )
+            {
+                return;
+            }
+
             // std::cout << "svd.singularValues(): " << svd.singularValues() << std::endl;
             // std::cout << "landmarkCoords: " << landmarkCoords << std::endl;
 
-            Landmark landmarkCurr(landmarkCoords(0),landmarkCoords(1), landmarkCoords(2));
+            auto featPtr0 = features[matchedImgIdFeatId[0].first][matchedImgIdFeatId[0].second];
+            Landmark landmarkCurr(landmarkCoords(0),landmarkCoords(1), landmarkCoords(2),
+                                  featPtr0->featColor.red,
+                                  featPtr0->featColor.green,
+                                  featPtr0->featColor.blue);
 
             landmarkCurr.initialLandmark = initialCloud;
              
@@ -496,16 +528,21 @@ namespace reconstructor::Core
                 auto imgIdx = matchedImgIdFeatId[pairIdx].first;
                 auto featIdx = matchedImgIdFeatId[pairIdx].second;
 
-                auto intrinsics = getIntrinsics(imgIdx2imgShape[imgIdx].first,
-                                                imgIdx2imgShape[imgIdx].second);
+                // auto intrinsics = getIntrinsics(imgIdx2imgShape[imgIdx].first,
+                //                                 imgIdx2imgShape[imgIdx].second);
+
+                auto intrinsics = imgIdx2camIntrinsics[imgIdx];
 
                 // check projection error:
                 auto landmarkCamFrame = imgIdx2camPose[imgIdx].block<3,3>(0,0) * landmarkCoords + imgIdx2camPose[imgIdx].block<3,1>(0,3);
-                auto landmarkProjectionX = intrinsics(0,0) * (landmarkCamFrame(0) / landmarkCamFrame(2)) + intrinsics(0,2);
-                auto landmarkProjectionY = intrinsics(1,1) * (landmarkCamFrame(1) / landmarkCamFrame(2)) + intrinsics(1,2);
+                
+                auto landmarkProjection = intrinsics.project(landmarkCamFrame);
 
-                auto residualX = abs(landmarkProjectionX - features[imgIdx][featIdx]->featCoord.x);
-                auto residualY = abs(landmarkProjectionY - features[imgIdx][featIdx]->featCoord.y);
+                // auto landmarkProjectionX = intrinsics(0,0) * (landmarkCamFrame(0) / landmarkCamFrame(2)) + intrinsics(0,2);
+                // auto landmarkProjectionY = intrinsics(1,1) * (landmarkCamFrame(1) / landmarkCamFrame(2)) + intrinsics(1,2);
+
+                auto residualX = abs(landmarkProjection(0) - features[imgIdx][featIdx]->featCoord.x);
+                auto residualY = abs(landmarkProjection(1) - features[imgIdx][featIdx]->featCoord.y);
 
                 auto residualTotal = residualX + residualY; 
                 
@@ -626,25 +663,24 @@ namespace reconstructor::Core
 
         // 
         
-        auto intrinsics = getIntrinsics(imgIdx2imgShape[imgIdx].first,
-                                         imgIdx2imgShape[imgIdx].second);
+        // auto intrinsics = getIntrinsics(imgIdx2imgShape[imgIdx].first,
+        //                                  imgIdx2imgShape[imgIdx].second);
 
-        cv::Mat intrinsicsCV = reconstructor::Utils::eigen3dToCVMat(intrinsics);
+        auto intrinsics = imgIdx2camIntrinsics[imgIdx];                                         
+
+        auto intrinsicsCV = intrinsics.getMatrixCV();
+        auto distCoeffsCV = intrinsics.getDistortCV();
+        
+        // cv::Mat intrinsicsCV = reconstructor::Utils::eigen3dToCVMat(intrinsics);
 
 
-        // cv::Mat distCoeffsCV = cv::Mat::zeros(4, 1, CV_64F);
         cv::Mat rotationCV, translationCV;
         cv::Mat inliersCV;
-
-        // std::cout << "landmarksCV: " << landmarksCV << std::endl;
-        // std::cout << "featuresCV: " << featuresCV << std::endl;
-        // std::cout << "landmarksCV.size: " << landmarksCV.size << std::endl;
-        // std::cout << "featuresCV.size: " << featuresCV.size << std::endl;
 
         cv::solvePnPRansac(landmarksCV,
                            featuresCV,
                            intrinsicsCV,
-                           cv::Mat(),
+                           distCoeffsCV,
                            rotationCV, translationCV,
                            false, 10000, 8.0, 0.99,
                            inliersCV);
@@ -753,6 +789,12 @@ namespace reconstructor::Core
         // choose image with highest number of matches to landmarks
         auto registeredImgIdx = landmarkMatches2ImageIdx.rbegin()->second;
 
+        PinholeCamera cameraIntrinsics(imgIdx2imgShape[registeredImgIdx].first,
+                                       imgIdx2imgShape[registeredImgIdx].second,
+                                       defaultFocalLengthPx,
+                                       defaultFocalLengthPx);
+        imgIdx2camIntrinsics[registeredImgIdx] = cameraIntrinsics;
+
         // need [landmark - keypoint] matches for PnP
         auto cameraPose = registerImagePnP(registeredImgIdx,
                                            imgIdToFeatureIds[registeredImgIdx],
@@ -767,6 +809,7 @@ namespace reconstructor::Core
                                     imgIdToLandmarkIds[registeredImgIdx]);
         
         registeredImages[registeredImgIdx] = true;
+        imgIdxOrder.push_back(registeredImgIdx);
         std::cout << "registering imgIdx: " << registeredImgIdx << std::endl;
         std::cout << "landmarks.size(): " << landmarks.size() << std::endl;
     }
@@ -802,6 +845,9 @@ namespace reconstructor::Core
         imgIdx2camPose[imgIdx2] = initialPose;
         registeredImages[imgIdx1] = true;
         registeredImages[imgIdx2] = true;
+        imgIdxOrder.push_back(imgIdx1);
+        imgIdxOrder.push_back(imgIdx2);
+
 
         std::cout << "initial pair imgIdx1: " << imgIdx1 
                                << "imgIdx2: " << imgIdx2 << std::endl; 
@@ -820,7 +866,7 @@ namespace reconstructor::Core
         {
 
             // save initial cloud with camera poses
-            std::string cloudPath = "cloud_" + std::to_string(i) + ".pcd";
+            std::string cloudPath = "../out_data/clouds/cloud_" + std::to_string(i) + ".ply";
             reconstructor::Utils::saveCloud(landmarks, imgIdx2camPose, cloudPath);
 
             landmarksUpdated.clear();
@@ -828,27 +874,23 @@ namespace reconstructor::Core
             addNextView();
 
             BundleAdjuster bundleAdjuster;
-            bundleAdjuster.adjust(features,
-                                    landmarks,
-                                    imgIdx2camPose,
-                                    imgIdx2imgShape,
-                                    landmarksUpdated,
-                                    cameraPosesUpdated,
-                                    defaultFocalLengthPx);
+            auto camGlobal2LocalIdx = bundleAdjuster.adjust(features,
+                                                            landmarks,
+                                                            imgIdx2camPose,
+                                                            imgIdx2camIntrinsics,
+                                                            imgIdxOrder);
+            
         }
 
-        std::cout << "landmarksUpdated.size(): " << landmarksUpdated.size() << std::endl;
-        std::cout << "cameraPosesUpdated.size(): " << cameraPosesUpdated.size() << std::endl;
 
-        auto landmarkCloudPtrBefore = reconstructor::Utils::landmarksToPclCloud(landmarks);
-        auto cameraCloudPtrBefore = reconstructor::Utils::cameraPosesToPclCloud(imgIdx2camPose);
+        std::string cloudPath = "../out_data/clouds/cloud_final.ply";
+        reconstructor::Utils::saveCloud(landmarks, imgIdx2camPose, cloudPath);
 
         auto landmarkCloudPtrAfter = reconstructor::Utils::vectorToPclCloud(landmarksUpdated, 0, 253, 0);
-        auto cameraCloudPtrAfter = reconstructor::Utils::vectorToPclCloud(cameraPosesUpdated, 253, 0, 0);
+        auto cameraCloudPtrAfter = reconstructor::Utils::vectorToPclCloud(cameraPosesUpdated, 0, 253, 0);
 
-        
-        // reconstructor::Utils::viewCloud(landmarkCloudPtrBefore, cameraCloudPtrBefore);
-        reconstructor::Utils::viewCloud(landmarkCloudPtrBefore, landmarkCloudPtrAfter, cameraCloudPtrBefore, cameraCloudPtrAfter);
+        reconstructor::Utils::viewCloud(landmarkCloudPtrAfter, cameraCloudPtrAfter);
+        // reconstructor::Utils::viewCloud(landmarkCloudPtrBefore, landmarkCloudPtrAfter, cameraCloudPtrBefore, cameraCloudPtrAfter);
 
     }
 

@@ -11,6 +11,7 @@
 #include "ImageMatcher.h"
 #include "GeometricFilter.h"
 #include "BundleAdjuster.h"
+#include "Camera.h"
 
 namespace fs = std::filesystem;
 
@@ -128,7 +129,9 @@ namespace reconstructor::Core
         // std::vector<bool> registeredImages;
         
         std::unordered_map<int, Eigen::Matrix4d> imgIdx2camPose;
+        std::unordered_map<int, PinholeCamera> imgIdx2camIntrinsics;
         std::unordered_map<int, bool> registeredImages;
+        std::vector<int> imgIdxOrder;
 
         // imgMatches[imgId] - contains vector of all matched image ids
         // std::vector<std::vector<int>> imgMatches;
@@ -153,6 +156,7 @@ namespace reconstructor::Core
         double defaultFocalLengthmm = 11.6;
 
         double defaultFocalLengthPx = 2759.48 / 6;
+        // double defaultFocalLengthPx = 1585.5 / 2; 
 
     };
 

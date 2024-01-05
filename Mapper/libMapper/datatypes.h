@@ -68,6 +68,17 @@ namespace reconstructor::Core
         int type = CV_32F;
     };
 
+    struct FeatColor
+    {
+        FeatColor(){}
+
+        FeatColor(int red, int green, int blue);
+
+        int red;
+        int green;
+        int blue;
+    };
+
     /*
     Struct for storing feature with coords and descriptor
     */
@@ -82,6 +93,8 @@ namespace reconstructor::Core
 
         FeatCoord<coordType> featCoord;
         FeatDesc featDesc;
+        FeatColor featColor;
+        
 
         // id of the landmark, corresponding to feature
         int landmarkId = -1;
@@ -145,10 +158,29 @@ namespace reconstructor::Core
         , y(y)
         , z(z)
         {}
+
+        Landmark(const double x,
+                 const double y,
+                 const double z,
+                 const int red,
+                 const int green,
+                 const int blue)
+        : x(x)
+        , y(y)
+        , z(z)
+        , red(red)
+        , green(green)
+        , blue(blue)
+        {}
+
         std::vector<TriangulatedFeature> triangulatedFeatures; 
         double x;
         double y;
         double z;
+
+        int red = 0;
+        int green = 0;
+        int blue = 0;
 
         bool initialLandmark = false;
     };

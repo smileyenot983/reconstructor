@@ -1,6 +1,8 @@
 #pragma once
 
 #include "datatypes.h"
+#include "Camera.h"
+
 
 namespace reconstructor::Core
 {
@@ -17,14 +19,14 @@ namespace reconstructor::Core
         // for now only equal intrinsics are supported
         Eigen::Matrix3d estimateEssential(const std::vector<FeaturePtr<>>& features1,
                                   const std::vector<FeaturePtr<>>& features2,
-                                  const Eigen::Matrix3d& intrinsics1,
-                                  const Eigen::Matrix3d& intrinsics2,
+                                  const PinholeCamera& intrinsics1,
+                                  const PinholeCamera& intrinsics2,
                                   std::shared_ptr<std::vector<bool>> inliers = nullptr);
 
 
         Eigen::Matrix3d estimateFundamental(const std::vector<FeaturePtr<>>& features1,
-                                    const std::vector<FeaturePtr<>>& features2,
-                                    std::shared_ptr<std::vector<bool>> inliers = nullptr);
+                                            const std::vector<FeaturePtr<>>& features2,
+                                            std::shared_ptr<std::vector<bool>> inliers = nullptr);
 
 
     };

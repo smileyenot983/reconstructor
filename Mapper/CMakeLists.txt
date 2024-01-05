@@ -24,6 +24,7 @@ set(HEADERS
         libMapper/ImageMatcher.h
         libMapper/GeometricFilter.h
         libMapper/BundleAdjuster.h
+        libMapper/Camera.h
 )
 
 set(SOURCES

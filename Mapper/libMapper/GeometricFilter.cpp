@@ -9,29 +9,38 @@ namespace reconstructor::Core
 {
     Eigen::Matrix3d GeometricFilter::estimateEssential(const std::vector<FeaturePtr<>>& features1,
                                                     const std::vector<FeaturePtr<>>& features2,
-                                                    const Eigen::Matrix3d& intrinsics1,
-                                                    const Eigen::Matrix3d& intrinsics2,
+                                                    const PinholeCamera& intrinsics1,
+                                                    const PinholeCamera& intrinsics2,
                                                     std::shared_ptr<std::vector<bool>> inliers)
     {
         auto featuresCV1 = featuresToCvPoints(features1);
         auto featuresCV2 = featuresToCvPoints(features2);
 
-        if(intrinsics1 != intrinsics2)
-        {
-            throw std::runtime_error("Different intrinsics are not yet supported");
-        }
+        // if(intrinsics1 != intrinsics2)
+        // {
+        //     throw std::runtime_error("Different intrinsics are not yet supported");
+        // }
         
-        auto intrinsicsCV1 = eigen3dToCVMat(intrinsics1);
-        auto intrinsicsCV2 = eigen3dToCVMat(intrinsics2);
+
+        auto intrinsicsCV1 = intrinsics1.getMatrixCV();
+        auto distortCV1 = intrinsics1.getDistortCV();
+
+        auto intrinsicsCV2 = intrinsics2.getMatrixCV();
+        auto distortCV2 = intrinsics2.getDistortCV();
+
+        std::cout << " intrinsicsCV1: " << intrinsicsCV1 << std::endl;
+        std::cout << " intrinsicsCV2: " << intrinsicsCV2 << std::endl;
+        std::cout << " distortCV1: " << distortCV1 << std::endl;
+        std::cout << " distortCV2: " << distortCV2 << std::endl;
+        
 
         cv::Mat inliersCV;
         auto essentialMatCV = cv::findEssentialMat(featuresCV1,
-                                                 featuresCV2,
+                                                   featuresCV2,
                                                  intrinsicsCV1,
-                                                 cv::RANSAC,
-                                                 0.999,
-                                                 1.0,
-                                                 inliersCV);
+                                                 distortCV1,
+                                                 intrinsicsCV2,
+                                                 distortCV2);
 
         std::cout << "essentialMatCV.type(): " << essentialMatCV.type() << std::endl;
 

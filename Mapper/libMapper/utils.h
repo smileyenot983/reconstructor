@@ -33,6 +33,12 @@ void reshapeImg(cv::Mat &img,
                  const int imgMaxSize);
 
 /*
+Reads image in rgb format
+*/
+cv::Mat readImg(const std::string& imgPath,
+                const int imgMaxSize);
+
+/*
 Reads image in grayscale and reshapes if needed
 */
 cv::Mat readGrayImg(const std::string& imgPath,
@@ -71,8 +77,7 @@ Eigen::Matrix3d cvMatToEigen3d(const cv::Mat& cvMat);
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Eigen::Vector3d>& landmarks);
 
 // creates cloud from landmarks
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Landmark>& landmarks,
-                                                           int red = 0, int green = 253, int blue = 0);
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Landmark>& landmarks);
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr cameraPosesToPclCloud(const std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
                                                               int red = 253, int green = 0, int blue = 0);

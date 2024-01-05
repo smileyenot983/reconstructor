@@ -3,6 +3,7 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
 #include <pcl/point_types.h>
 
 #include <thread>
@@ -87,14 +88,20 @@ void reshapeImg(cv::Mat &img,
     }
 }
 
+cv::Mat readImg(const std::string& imgPath,
+                const int imgMaxSize)
+{
+    cv::Mat img = cv::imread(imgPath);
+    cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+    reshapeImg(img, imgMaxSize);
+    return img;
+}
+
 cv::Mat readGrayImg(const std::string& imgPath,
                        const int imgMaxSize)
 {
     cv::Mat img = cv::imread(imgPath, cv::IMREAD_GRAYSCALE);
     reshapeImg(img, imgMaxSize);
-    std::cout << "size before: " << img.size << std::endl;
-    std::cout << "size after: " << img.size << std::endl;
-    // cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
     return img;
 }
 
@@ -239,8 +246,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Eig
     return landmark_cloud;
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Landmark>& landmarks,
-                                                           int red, int green, int blue)
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Landmark>& landmarks)
 {
     // auto landmark_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
 
@@ -249,21 +255,12 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Lan
 
     for(const auto& landmark : landmarks)
     {
-        pcl::PointXYZRGB pt(0, 0, 0);
-        pt.r = 253;
+        pcl::PointXYZRGB pt(landmark.red, landmark.green, landmark.blue);
         pt.x = landmark.x;
         pt.y = landmark.y;
         pt.z = landmark.z;
         landmark_cloud->points.push_back(pt);
     }
-
-    std::cout << "landmark_cloud->points[0]: " << landmark_cloud->points[0] << std::endl;
-    std::cout << "landmark_cloud->points[1]: " << landmark_cloud->points[1] << std::endl;
-    std::cout << "landmark_cloud->points[2]: " << landmark_cloud->points[2] << std::endl;
-    std::cout << "landmark_cloud->points[3]: " << landmark_cloud->points[3] << std::endl;
-    std::cout << "landmark_cloud->points[4]: " << landmark_cloud->points[4] << std::endl;
-    std::cout << "landmark_cloud->points[5]: " << landmark_cloud->points[5] << std::endl;
-
 
     return landmark_cloud;
 }
@@ -294,20 +291,17 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cameraPosesToPclCloud(const std::unordere
     for(const auto& [imgIdx, camPose] : imgIdx2camPose)
     {
         Eigen::Vector3d translationVector = camPose.block<3, 1>(0, 3);
+        Eigen::Matrix3d rotationMat = camPose.block<3, 3>(0, 0);
+
+        // camera center = -R^T * t
+        Eigen::Vector3d cameraCenter = -rotationMat.transpose() * translationVector;
 
         pcl::PointXYZRGB pt(red, green, blue);
-        pt.x = translationVector(0);
-        pt.y = translationVector(1);
-        pt.z = translationVector(2);
+        pt.x = cameraCenter(0);
+        pt.y = cameraCenter(1);
+        pt.z = cameraCenter(2);
         camera_cloud->points.push_back(pt);
     }
-
-    // std::cout << "camera_cloud->points[0]: " << camera_cloud->points[0] << std::endl;
-    // std::cout << "camera_cloud->points[1]: " << camera_cloud->points[1] << std::endl;
-    // std::cout << "camera_cloud->points[2]: " << camera_cloud->points[2] << std::endl;
-    // std::cout << "camera_cloud->points[3]: " << camera_cloud->points[3] << std::endl;
-    // std::cout << "camera_cloud->points[4]: " << camera_cloud->points[4] << std::endl;
-    // std::cout << "camera_cloud->points[5]: " << camera_cloud->points[5] << std::endl;
 
     return camera_cloud;
 
@@ -393,13 +387,12 @@ void saveCloud(std::vector<Landmark>& landmarks,
                std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
                const std::string& cloudPath)
 {
-    auto posesCloud = cameraPosesToPclCloud(imgIdx2camPose);
+    auto posesCloud = cameraPosesToPclCloud(imgIdx2camPose, 0, 250, 0);
     auto landmarksCloud =  landmarksToPclCloud(landmarks);
 
     *landmarksCloud += *posesCloud;
 
-    pcl::io::savePCDFileASCII (cloudPath, *landmarksCloud);
-
+    pcl::io::savePLYFile(cloudPath, *landmarksCloud);
 
 }
 
