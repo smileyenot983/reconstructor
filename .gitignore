@@ -1,3 +1,5 @@
 build
 out_data
 .vscode
+*.jpg
+*.JPG

@@ -340,10 +340,6 @@ void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark1,
                const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera1,
                const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera2)
 {
-    // pcl::visualization::CloudViewer viewer("Cloud Viewer");
-    // viewer.showCloud(cloudLandmark, "cloudLandmark");
-    // viewer.showCloud(cloudCamera, "cloudCamera");
-
 
     pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
     viewer->addPointCloud<pcl::PointXYZRGB>(cloudLandmark1, "cloud_landmark1");
@@ -370,16 +366,22 @@ void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark1,
 }
 
 void writeInliersToVector(const cv::Mat& inliersCV,
-                              std::vector<bool>& inliersVec)
+                          std::vector<bool>& inlierMatchIds)
     {
-        // std::cout << "inliersVec.rows: " << inliersCV.rows << std::endl;
-        // std::cout << "inliersVec.cols: " << inliersCV.cols << std::endl;
-        // std::cout << "inliersCV.at<uchar>(matchIdx): " << static_cast<unsigned>(inliersCV.at<uchar>(0)) << std::endl;
-        // std::cout << "inliersCV.at<uchar>(matchIdx): " << static_cast<unsigned>(inliersCV.at<uchar>(0)) << std::endl;
         for(size_t matchIdx = 0; matchIdx < inliersCV.rows; ++matchIdx)
         {
-            inliersVec.push_back(inliersCV.at<uchar>(matchIdx));
-            // std::cout << "inliersCV.at<uchar>(matchIdx): " << inliersCV.at<uchar>(matchIdx) << std::endl;
+
+            if(inliersCV.at<uchar>(matchIdx))
+            {
+                inlierMatchIds.push_back(true);
+            }
+            else
+            {
+                inlierMatchIds.push_back(false);
+            }
+            // std::cout << "inliersCV.at<uchar>(matchIdx): " << static_cast<int>(inliersCV.at<uchar>(matchIdx))<< std::endl;
+            // inliersVec.push_back(inliersCV.at<uchar>(matchIdx));
+            
         }
     }
 
@@ -393,7 +395,12 @@ void saveCloud(std::vector<Landmark>& landmarks,
     *landmarksCloud += *posesCloud;
 
     pcl::io::savePLYFile(cloudPath, *landmarksCloud);
+}
 
+void deleteDirectoryContents(const std::filesystem::path& dir)
+{
+    for (const auto& entry : std::filesystem::directory_iterator(dir)) 
+        std::filesystem::remove_all(entry.path());
 }
 
 }

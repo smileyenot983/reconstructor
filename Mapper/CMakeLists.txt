@@ -44,6 +44,8 @@ find_package(Torch REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(Ceres REQUIRED)
+find_package(OpenMP)
+
 
 add_library(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS}
@@ -51,7 +53,7 @@ target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS}
                                       Eigen3::Eigen
                                       ${PCL_LIBRARIES}
                                       ${CERES_LIBRARIES}
-                                #       -fsanitize=address
+                                      OpenMP::OpenMP_CXX
                                       )
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}
                                                   ${OpenCV_INCLUDE_DIRS}

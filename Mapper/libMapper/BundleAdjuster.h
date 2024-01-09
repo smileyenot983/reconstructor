@@ -84,7 +84,7 @@ public:
     std::unordered_map<int, int> adjust(std::unordered_map<int, std::vector<FeaturePtr<>>>& features,
                                         std::vector<Landmark>& landmarks,
                                         std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
-                                        std::unordered_map<int, PinholeCamera> imgIdx2camIntrinsics,
+                                        std::unordered_map<int, PinholeCamera>& imgIdx2camIntrinsics,
                                         std::vector<int> imgIdxOrder);
 
 };

@@ -11,7 +11,7 @@ namespace reconstructor::Core
                                                     const std::vector<FeaturePtr<>>& features2,
                                                     const PinholeCamera& intrinsics1,
                                                     const PinholeCamera& intrinsics2,
-                                                    std::shared_ptr<std::vector<bool>> inliers)
+                                                    std::vector<bool>& inlierMatchIds)
     {
         auto featuresCV1 = featuresToCvPoints(features1);
         auto featuresCV2 = featuresToCvPoints(features2);
@@ -44,27 +44,26 @@ namespace reconstructor::Core
 
         std::cout << "essentialMatCV.type(): " << essentialMatCV.type() << std::endl;
 
-        if(inliers)
-        {
-            reconstructor::Utils::writeInliersToVector(inliersCV, *inliers);
-        }        
-        
+        writeInliersToVector(inliersCV, inlierMatchIds);
         auto essentialMatEigen = cvMatToEigen3d(essentialMatCV);
 
         return essentialMatEigen;
     }
 
     Eigen::Matrix3d GeometricFilter::estimateFundamental(const std::vector<FeaturePtr<>>& features1,
-                                                 const std::vector<FeaturePtr<>>& features2,
-                                                 std::shared_ptr<std::vector<bool>> inliers)
+                                                         const std::vector<FeaturePtr<>>& features2,
+                                                         std::vector<bool>& inlierMatchIds)
     {
         auto featuresCV1 = featuresToCvPoints(features1);
         auto featuresCV2 = featuresToCvPoints(features2);
 
+        // std::cout << "featuresCV1.size: " << featuresCV1.size() << std::endl;
+        // std::cout << "featuresCV2.size: " << featuresCV2.size() << std::endl;
+
         cv::Mat inliersCV;
         auto fundamentalMat = cv::findFundamentalMat(featuresCV1, featuresCV2, inliersCV);
 
-        writeInliersToVector(inliersCV, *inliers);
+        writeInliersToVector(inliersCV, inlierMatchIds);
         auto eigenMat = cvMatToEigen3d(fundamentalMat);
 
         return eigenMat;

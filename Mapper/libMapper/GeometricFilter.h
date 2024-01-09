@@ -21,12 +21,12 @@ namespace reconstructor::Core
                                   const std::vector<FeaturePtr<>>& features2,
                                   const PinholeCamera& intrinsics1,
                                   const PinholeCamera& intrinsics2,
-                                  std::shared_ptr<std::vector<bool>> inliers = nullptr);
+                                  std::vector<bool>& inlierMatchIds);
 
 
         Eigen::Matrix3d estimateFundamental(const std::vector<FeaturePtr<>>& features1,
                                             const std::vector<FeaturePtr<>>& features2,
-                                            std::shared_ptr<std::vector<bool>> inliers = nullptr);
+                                            std::vector<bool>& inlierMatchIds);
 
 
     };

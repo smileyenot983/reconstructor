@@ -1,5 +1,7 @@
 #pragma once
 
+#include <filesystem>
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
 
@@ -95,11 +97,13 @@ void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark1,
                const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera2);
 
 void writeInliersToVector(const cv::Mat& inliersCV,
-                              std::vector<bool>& inliersVec);
+                          std::vector<bool>& inlierMatchIds);
 
 
 void saveCloud(std::vector<Landmark>& landmarks,
                std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
                const std::string& cloudPath);
+
+void deleteDirectoryContents(const std::filesystem::path& dir);
 
 }

@@ -54,7 +54,7 @@ namespace reconstructor::Core
 
     void FeatureMatcherSuperglue::matchFeatures(const std::vector<FeaturePtr<>>& features1,
                                                 const std::vector<FeaturePtr<>>& features2,
-                                                std::unordered_map<int, int>& matches,
+                                                std::map<int, int>& matches,
                                                 const std::pair<int, int> imgShape1,
                                                 const std::pair<int, int> imgShape2)
     {
@@ -85,7 +85,7 @@ namespace reconstructor::Core
             auto matchScore = matchScores0[0][featIdx].item<double>();
             matchScores.push_back(matchScore);
             // -1 means no matches
-            if(matchedFeatIdx != -1 )
+            if(matchedFeatIdx != -1 && matchScore > 0.8)
             {
                 // std::cout << "featIdx: " << featIdx
                 //           << "| matchedFeatIdx: " << matchedFeatIdx
@@ -95,15 +95,15 @@ namespace reconstructor::Core
                 // matches.push_back(match);
             }
         }
-        auto middle = matchScores.size() / 2;
-        std::nth_element(matchScores.begin(), matchScores.begin() + middle, matchScores.end());
-        auto medianScore = matchScores[middle];
-        auto minScore = matchScores[0];
-        auto maxScore = matchScores[matchScores.size()-1];
+        // auto middle = matchScores.size() / 2;
+        // std::nth_element(matchScores.begin(), matchScores.begin() + middle, matchScores.end());
+        // auto medianScore = matchScores[middle];
+        // auto minScore = matchScores[0];
+        // auto maxScore = matchScores[matchScores.size()-1];
 
-        std::cout << "medianScore: " << medianScore << std::endl;
-        std::cout << "minScore: " << minScore << std::endl;
-        std::cout << "maxScore: " << maxScore << std::endl;
+        // std::cout << "medianScore: " << medianScore << std::endl;
+        // std::cout << "minScore: " << minScore << std::endl;
+        // std::cout << "maxScore: " << maxScore << std::endl;
 
         // std::cout << "crossCheckPassed: " << crossCheckPassed << std::endl;
         // std::cout << "matches.size(): " << matches.size() << std::endl;
