@@ -10,9 +10,9 @@ also a cpp wrapper over SuperGlue matcher(https://github.com/magicleap/SuperGlue
 
 # reconstructor results(on images in data folder)
 
-![Before global bundle adjustment](./beforeBA.jpg)
+![herzjesu(left view)](./herzjesu.jpg)
 
-![After global bundle adjustment](./afterBA.jpg)
+![herzjesu(right view)](./herzjesu2.jpg)
 
 # what is done at the moment
 
