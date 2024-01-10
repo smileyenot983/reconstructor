@@ -24,13 +24,13 @@ also a cpp wrapper over SuperGlue matcher(https://github.com/magicleap/SuperGlue
 6. Img matcher(which for now assumes all images are matched)
 7. 3d visualization of reconstructed cloud(up to scale) + camera positions
 8. incremental reconstruction via pnp + BA
+9. colored pointcloud, saved in *.ply format
 
 # todo:
 
 1. image matcher(apply some image retrieval, FAISS, metric learning)
 2. use openmp/tbb to make it faster
 3. code refactoring + add comments
-4. make colored pointcloud + save in meshlab format
 
 
 # todo later:
