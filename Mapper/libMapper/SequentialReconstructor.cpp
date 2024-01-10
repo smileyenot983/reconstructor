@@ -807,10 +807,11 @@ namespace reconstructor::Core
         return residualTotal;
     }
 
-    int SequentialReconstructor::checkLandmarkValidity()
+    std::vector<bool> SequentialReconstructor::checkLandmarkValidity()
     {
         // count inliers after BA for all landmarks:
         int numInliers = 0;
+        std::vector<bool> inlierLandmarks;
         for(const auto& landmark : landmarks)
         {
             bool outlierLandmark = false;
@@ -822,7 +823,7 @@ namespace reconstructor::Core
                 auto landmarkLocalCoords = getLandmarkLocalCoords(imgIdx, landmark);
                 auto residualTotal = calcProjectionError(imgIdx, featIdx, landmarkLocalCoords);
 
-                if(residualTotal > maxProjectionError)
+                if(residualTotal > 3 * maxProjectionError)
                 {
                     std::cout << "high residual on"
                                 << "| imgIdx: " << imgIdx
@@ -863,7 +864,7 @@ namespace reconstructor::Core
 
 
 
-                    if(angle < minTriangulationAngle)
+                    if(angle < 0.3 * minTriangulationAngle)
                     {
                         auto featIdx1 = landmark.triangulatedFeatures[featId1].featIdx;
                         auto imgIdx1 = landmark.triangulatedFeatures[featId1].imgIdx;
@@ -884,17 +885,35 @@ namespace reconstructor::Core
                 }
             }
 
-
-
-            if(!outlierLandmark)
-            {
-                ++numInliers;
-            }
-            
+            inlierLandmarks.push_back(!outlierLandmark);
         }
 
-        return numInliers;
+        return inlierLandmarks;
     }
+
+    void SequentialReconstructor::removeOutlierLandmarks(const std::vector<bool>& inlierIds)
+    {
+        std::vector<Landmark> updatedLandmarks;
+        for(size_t i = 0; i < inlierIds.size(); ++i)
+        {
+            if(inlierIds[i])
+            {
+                updatedLandmarks.push_back(landmarks[i]);
+                
+            }
+            else
+            {
+                for(const auto& triangFeat : landmarks[i].triangulatedFeatures)
+                {
+                    auto imgIdx = triangFeat.imgIdx;
+                    auto featIdx = triangFeat.featIdx;
+                    features[imgIdx][featIdx]->landmarkId = -1;
+                }
+            }
+        }
+        landmarks = updatedLandmarks;
+    }
+
 
     void SequentialReconstructor::reconstruct(const std::string& imgFolder,
                                               const std::string& outFolder)
@@ -965,21 +984,6 @@ namespace reconstructor::Core
             addNextView();
             timeLogger.endEvent();
 
-            for(size_t i = 0; i < landmarks.size(); ++i)
-            {
-                std::cout << "landmark_i: " << i << std::endl; 
-                for(size_t j = 0; j < landmarks[i].triangulatedFeatures.size(); ++j)
-                {
-                    auto imgIdx = landmarks[i].triangulatedFeatures[j].imgIdx;
-                    auto featIdx = landmarks[i].triangulatedFeatures[j].featIdx;
-
-                    auto landmarkId = features[imgIdx][featIdx]->landmarkId;
-                    std::cout << "imgIdx: " << imgIdx
-                              << "| featIdx: " << featIdx
-                              << "| landmarkId: " << landmarkId << std::endl;
-                }
-            }
-
             // save cloud before BA
             std::string cloudPath = "../out_data/clouds/cloud_before_" + std::to_string(i) + ".ply";
             reconstructor::Utils::saveCloud(landmarks, imgIdx2camPose, cloudPath);
@@ -989,6 +993,15 @@ namespace reconstructor::Core
             // count inliers before BA for all landmarks:
             auto inliersBefore = checkLandmarkValidity();
 
+            int nInliersBefore = 0;
+            for(const auto landmarkStatus : inliersBefore)
+            {
+                if(landmarkStatus)
+                {
+                    ++nInliersBefore;
+                }
+            }
+
             BundleAdjuster bundleAdjuster;
             auto camGlobal2LocalIdx = bundleAdjuster.adjust(features,
                                                             landmarks,
@@ -996,7 +1009,17 @@ namespace reconstructor::Core
                                                             imgIdx2camIntrinsics,
                                                             imgIdxOrder);
 
-            // auto inliersAfter = checkLandmarkValidity();
+            auto inliersAfter = checkLandmarkValidity();
+
+            int nInliersAfter = 0;
+            for(const auto landmarkStatus : inliersBefore)
+            {
+                if(landmarkStatus)
+                {
+                    ++nInliersAfter;
+                }
+            }
+
 
             // save cloud after BA
             cloudPath = "../out_data/clouds/cloud_after_" + std::to_string(i) + ".ply";
@@ -1005,8 +1028,12 @@ namespace reconstructor::Core
 
             
 
-            std::cout << "inliers before: " << inliersBefore << std::endl;
-                    //   << "inliers after: " << inliersAfter << std::endl;
+            std::cout << "inliers before: " << nInliersBefore 
+                      << "inliers after: " << nInliersAfter 
+                      << "total landmarks: " << inliersBefore.size() << std::endl;
+
+            // remove outlier landmarks
+            removeOutlierLandmarks(inliersAfter);
 
 
             timeLogger.endEvent();

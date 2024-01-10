@@ -85,7 +85,7 @@ namespace reconstructor::Core
             auto matchScore = matchScores0[0][featIdx].item<double>();
             matchScores.push_back(matchScore);
             // -1 means no matches
-            if(matchedFeatIdx != -1 && matchScore > 0.8)
+            if(matchedFeatIdx != -1 && matchScore > 0.5)
             {
                 // std::cout << "featIdx: " << featIdx
                 //           << "| matchedFeatIdx: " << matchedFeatIdx

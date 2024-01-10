@@ -115,10 +115,11 @@ namespace reconstructor::Core
         double calcProjectionError(int imgIdx, int featIdx,
                                     Eigen::Vector3d landmarkCoordsLocal);
 
-        int checkLandmarkValidity();
+        // returns whether corresponding landmarkId is valid or not
+        std::vector<bool> checkLandmarkValidity();
 
-        // void removeBAOutliers(std::vector<int>& featureIdxs,
-        //                       std::vector<int>& landmarkIdxs) 
+        // removes invalid landmarks, negative depth || low triangulation angle || high reprojection error
+        void removeOutlierLandmarks(const std::vector<bool>& inlierIds);
 
 
     private:
@@ -163,8 +164,8 @@ namespace reconstructor::Core
         double maxProjectionError = 4.0;
         double minTriangulationAngle = 1.0;
 
-        // double defaultFocalLengthPx = 2759.48 / 6;
-        double defaultFocalLengthPx = 1585.5 / 2; 
+        double defaultFocalLengthPx = 2759.48 / 6;
+        // double defaultFocalLengthPx = 1585.5 / 2; 
 
     };
 

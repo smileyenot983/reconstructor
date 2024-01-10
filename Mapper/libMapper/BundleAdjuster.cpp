@@ -87,9 +87,6 @@ std::unordered_map<int, int> BundleAdjuster::adjust(std::unordered_map<int, std:
 
             auto imgIdxLocal = imgIdxGlobal2Local[imgIdx];
 
-            // observation2Landmark[lastObservation] = landmarkId;
-            // observation2Camera[lastObservation] = imgIdx;
-            
             observations[2 * lastObservation] = features[imgIdx][featIdx]->featCoord.x;
             observations[2 * lastObservation + 1] = features[imgIdx][featIdx]->featCoord.y;
 
