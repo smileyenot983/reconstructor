@@ -44,10 +44,10 @@ namespace reconstructor::Core
     for feature detection and descriptions
     */
     // Elapsed time: 3.96186 s
-    class FeatureORB : public FeatureDetector
+    class FeatureClassic : public FeatureDetector
     {
     public:
-        FeatureORB();
+        FeatureClassic();
 
         void detect(const cv::Mat &img,
                     std::vector<FeaturePtr<>> &features) override;

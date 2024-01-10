@@ -22,7 +22,7 @@ int main()
                                                                                reconstructor::Core::FeatMatcherType::SuperGlue,
                                                                                reconstructor::Core::ImgMatcherType::Fake);
 
-    reconstructor->reconstruct("../data/", "../out_data/");
+    reconstructor->reconstruct("../data/", "../out_data");
 
     return 0;
 }

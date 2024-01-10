@@ -22,8 +22,8 @@ namespace reconstructor::Core
         // replace with Factory design pattern
         switch(featDetectorType)
         {
-        case FeatDetectorType::Orb:
-            featDetector = std::make_unique<FeatureORB>();
+        case FeatDetectorType::Classic:
+            featDetector = std::make_unique<FeatureClassic>();
             break;
         case FeatDetectorType::SuperPoint:
             featDetector = std::make_unique<FeatureSuperPoint>();
@@ -123,7 +123,18 @@ namespace reconstructor::Core
             {
                 for(size_t col = 0; col < imgPrepared1.cols; ++ col)
                 {
-                    imgMerged.at<float>(row,col) = 255 * imgPrepared1.at<float>(row,col);
+                    if(imgType == CV_8U)
+                    {
+                        imgMerged.at<uchar>(row,col) = imgPrepared1.at<uchar>(row,col);
+                    }
+                    else if(imgType == CV_32F)
+                    {
+                        imgMerged.at<float>(row,col) = 255 * imgPrepared1.at<float>(row,col);
+                    }
+                    else
+                    {
+                        throw std::runtime_error("Unknown image type!");
+                    }
                 }
             }
             // now from second:
@@ -132,7 +143,18 @@ namespace reconstructor::Core
             {
                 for(size_t col = 0; col < imgPrepared2.cols; ++col)
                 {
-                    imgMerged.at<float>(row, col + colOffset) = 255 * imgPrepared2.at<float>(row, col);
+                    if(imgType == CV_8U)
+                    {
+                        imgMerged.at<uchar>(row,col + colOffset) = imgPrepared2.at<uchar>(row,col);
+                    }
+                    else if(imgType == CV_32F)
+                    {
+                        imgMerged.at<float>(row,col + colOffset) = 255 * imgPrepared2.at<float>(row,col);
+                    }
+                    else
+                    {
+                        throw std::runtime_error("Unknown image type!");
+                    }
                 }
             }
 
@@ -195,6 +217,7 @@ namespace reconstructor::Core
                 featMatcher->matchFeatures(features1, features2, curMatches, imgIdx2imgShape[imgId1], imgIdx2imgShape[imgId2]);
                 
                 std::cout << "curMatches.size(): " << curMatches.size() << std::endl;
+
                 // need at least 7 matched points for fundamental matrix estimation(7 pt algorithm)
                 if(filter && curMatches.size() >= 7)
                 {

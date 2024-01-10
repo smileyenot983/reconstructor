@@ -21,7 +21,7 @@ namespace reconstructor::Core
 {
     enum FeatDetectorType
     {
-        Orb,
+        Classic,
         SuperPoint
     };
 
@@ -165,7 +165,7 @@ namespace reconstructor::Core
         double minTriangulationAngle = 1.0;
 
         double defaultFocalLengthPx = 2759.48 / 6;
-        // double defaultFocalLengthPx = 1585.5 / 2; 
+        // double defaultFocalLengthPx = 1585.5 / 8; 
 
     };
 

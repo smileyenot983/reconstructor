@@ -4,20 +4,21 @@
 
 namespace reconstructor::Core
 {
-    FeatureORB::FeatureORB()
+    FeatureClassic::FeatureClassic()
     {
-        orbDetector = cv::ORB::create();
+        // orbDetector = cv::ORB::create();
+        siftDetector = cv::SIFT::create();
     }
 
-    void FeatureORB::detect(const cv::Mat& img,
+    void FeatureClassic::detect(const cv::Mat& img,
                             std::vector<FeaturePtr<>>& features)
     {
-        std::cout << "img.size: " << img.size << std::endl;
-
         std::vector<cv::KeyPoint> keypoints;
         cv::Mat descriptors;
 
-        orbDetector->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
+        // orbDetector->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
+        siftDetector->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
+
 
         // features.resize(keypoints.size());
         int descSize = descriptors.size[1];
@@ -35,7 +36,7 @@ namespace reconstructor::Core
         }
     }
 
-    cv::Mat FeatureORB::prepImg(const cv::Mat &img)
+    cv::Mat FeatureClassic::prepImg(const cv::Mat &img)
     {
         cv::Mat imgPrepared;
 

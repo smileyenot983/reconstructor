@@ -27,7 +27,6 @@ cv::Mat featDescToCV(const std::vector<FeaturePtr<>>& features)
 FlannMatcher::FlannMatcher()
 {
     matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
-    // matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::BRUTEFORCE_HAMMING);
 }
 
 void FlannMatcher::matchFeatures(const std::vector<FeaturePtr<>>& features1,
@@ -49,16 +48,18 @@ void FlannMatcher::matchFeatures(const std::vector<FeaturePtr<>>& features1,
     std::vector<std::vector<cv::DMatch>> knnMatches;
     matcher->knnMatch(descriptorsCV1, descriptorsCV2, knnMatches, 2);
 
-
+    std::vector<int> matchedFeatIds;
     // filter resulting matches(Lowe's ratio test):
     for(size_t i = 0; i < knnMatches.size(); ++i)
     {
         if(knnMatches[i][0].distance < ratioThresh * knnMatches[i][1].distance)
         {
-            matches[knnMatches[i][0].queryIdx] = knnMatches[i][0].trainIdx;
-            // Match match(knnMatches[i][0].queryIdx, knnMatches[i][0].trainIdx);
-            // matches.push_back(match);
-            // goodMatches.push_back(knnMatches[i][0]);
+            auto matchedFeatId = knnMatches[i][0].trainIdx;
+            if(std::find(matchedFeatIds.begin(), matchedFeatIds.end(), matchedFeatId) == matchedFeatIds.end())
+            {   
+                matches[knnMatches[i][0].queryIdx] = matchedFeatId;
+                matchedFeatIds.push_back(matchedFeatId);
+            }
         }
     }
 }
