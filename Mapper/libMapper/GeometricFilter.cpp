@@ -51,21 +51,26 @@ namespace reconstructor::Core
         auto featuresCV1 = featuresToCvPoints(features1);
         auto featuresCV2 = featuresToCvPoints(features2);
 
-        std::cout << "featuresCV1.size: " << featuresCV1.size() << std::endl;
-        std::cout << "featuresCV2.size: " << featuresCV2.size() << std::endl;
+        // std::cout << "featuresCV1.size: " << featuresCV1.size() << std::endl;
+        // std::cout << "featuresCV2.size: " << featuresCV2.size() << std::endl;
 
         cv::Mat inliersCV;
         auto fundamentalMat = cv::findFundamentalMat(featuresCV1, featuresCV2, inliersCV);
 
-        // std::cout << "featuresCV1: " << featuresCV1 << std::endl;
-        // std::cout << "featuresCV2: " << featuresCV2 << std::endl; 
         // std::cout << "fundamentalMat.size: " << fundamentalMat.size << std::endl;
-        
-        writeInliersToVector(inliersCV, inlierMatchIds);
-        auto eigenMat = cvMatToEigen3d(fundamentalMat);
+        // std::cout << fundamentalMat << std::endl;
 
-        return eigenMat;
+        // sometimes it fails to estimated fundamental mat
+        if(fundamentalMat.empty())
+        {
+            return Eigen::Matrix3d::Zero();
+        }
+        else
+        {
+            writeInliersToVector(inliersCV, inlierMatchIds);
+            auto eigenMat = cvMatToEigen3d(fundamentalMat);
+
+            return eigenMat;
+        }
     }   
-
-
 }

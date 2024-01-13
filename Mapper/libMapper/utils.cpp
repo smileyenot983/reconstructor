@@ -59,7 +59,7 @@ void visualizeKeypoints(const cv::Mat& img,
     visualizeKeypoints(img, featureCoords, imgIdx, saveImage);
 }
 
-void reshapeImg(cv::Mat &img,
+double reshapeImg(cv::Mat &img,
                  const int imgMaxSize)
 {
     if (img.rows > img.cols)
@@ -72,7 +72,11 @@ void reshapeImg(cv::Mat &img,
             colSize = colSize - std::fmod(colSize, 8);
 
             cv::resize(img, img, cv::Size(colSize, rowSize));
+
+            return rowSize / img.rows;
         }
+
+        return 1.0;
     }
     else
     {
@@ -84,17 +88,23 @@ void reshapeImg(cv::Mat &img,
             rowSize = rowSize - std::fmod(rowSize, 8);
 
             cv::resize(img, img, cv::Size(colSize, rowSize));
+
+            return colSize / img.cols;
         }
-    }
+
+        return 1.0;
+    } 
 }
 
-cv::Mat readImg(const std::string& imgPath,
+double readImg(cv::Mat& img,
+                const std::string& imgPath,
                 const int imgMaxSize)
 {
-    cv::Mat img = cv::imread(imgPath);
+    img = cv::imread(imgPath);
     cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
-    reshapeImg(img, imgMaxSize);
-    return img;
+    auto downScaleFactor = reshapeImg(img, imgMaxSize);
+    
+    return downScaleFactor;
 }
 
 cv::Mat readGrayImg(const std::string& imgPath,
@@ -143,9 +153,10 @@ double focalLengthmmToPx(const double focalLengthmm,
                          const double fovDegrees)
 {
     // convert fov to radians
-    double fovRadians = fovDegrees * 3.1415 / 180.0;
+    double fovRadians = fovDegrees * 3.1415 / 180.0; // 0,689384722
 
-    double focalLengthPx = imgDim / (2.0 * tan(fovRadians / 2.0));
+    double focalLengthPx = imgDim / (2.0 * tan(fovRadians / 2.0)); // fx = 1092 / 0.718  = 1520
+                                                                   // fy = 728 / 0.718 = 1014
 
     return focalLengthPx;
 }
@@ -228,30 +239,42 @@ Eigen::Matrix3d cvMatToEigen3d(const cv::Mat& cvMat)
     return eigenMat;
 }
 
-
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Eigen::Vector3d>& landmarks)
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Landmark>& landmarks)
 {
+    // it is better to use it like that, using default shared_ptr would conflict with other pcl functions
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmark_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
     for(const auto& landmark : landmarks)
     {
-        pcl::PointXYZRGB pt(0,0,0);
-        pt.g = 253;
-        pt.x = landmark(0);
-        pt.y = landmark(1);
-        pt.z = landmark(2);
+        pcl::PointXYZRGB pt(landmark.red, landmark.green, landmark.blue);
+        pt.x = landmark.x;
+        pt.y = landmark.y;
+        pt.z = landmark.z;
         landmark_cloud->points.push_back(pt);
-
     }
+
     return landmark_cloud;
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Landmark>& landmarks)
+// same as previous one, but will paint outliers with red color
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Landmark>& landmarks,
+                                                           const std::vector<bool>& inliers)
 {
-    // auto landmark_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-
     // it is better to use it like that, using default shared_ptr would conflict with other pcl functions
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmark_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+    for(size_t landmarkId = 0; landmarkId < landmarks.size(); ++landmarkId)
+    {
+        auto channelRed = inliers[landmarkId] ? landmarks[landmarkId].red : 253;
+        auto channelGreen = inliers[landmarkId] ? landmarks[landmarkId].green : 0;
+        auto channelBlue = inliers[landmarkId] ? landmarks[landmarkId].blue : 0;
+
+        pcl::PointXYZRGB pt(channelRed, channelGreen, channelBlue);
+        pt.x = landmarks[landmarkId].x;
+        pt.y = landmarks[landmarkId].y;
+        pt.z = landmarks[landmarkId].z;
+        landmark_cloud->points.push_back(pt);
+    }
 
     for(const auto& landmark : landmarks)
     {
@@ -391,6 +414,19 @@ void saveCloud(std::vector<Landmark>& landmarks,
 {
     auto posesCloud = cameraPosesToPclCloud(imgIdx2camPose, 0, 250, 0);
     auto landmarksCloud =  landmarksToPclCloud(landmarks);
+
+    *landmarksCloud += *posesCloud;
+
+    pcl::io::savePLYFile(cloudPath, *landmarksCloud);
+}
+
+void saveCloud(std::vector<Landmark>& landmarks,
+               std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
+               const std::string& cloudPath,
+               const std::vector<bool>& inliers)
+{
+    auto posesCloud = cameraPosesToPclCloud(imgIdx2camPose, 0, 250, 0);
+    auto landmarksCloud = landmarksToPclCloud(landmarks, inliers);
 
     *landmarksCloud += *posesCloud;
 

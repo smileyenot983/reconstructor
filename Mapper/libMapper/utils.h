@@ -31,13 +31,14 @@ void visualizeKeypoints(const cv::Mat& img,
 Reshapes input image in place, making sure that resulting
 image sides are divisible by 8
 */
-void reshapeImg(cv::Mat &img,
+double reshapeImg(cv::Mat &img,
                  const int imgMaxSize);
 
 /*
 Reads image in rgb format
 */
-cv::Mat readImg(const std::string& imgPath,
+double readImg(cv::Mat& img,
+                const std::string& imgPath,
                 const int imgMaxSize);
 
 /*
@@ -103,6 +104,11 @@ void writeInliersToVector(const cv::Mat& inliersCV,
 void saveCloud(std::vector<Landmark>& landmarks,
                std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
                const std::string& cloudPath);
+
+void saveCloud(std::vector<Landmark>& landmarks,
+               std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
+               const std::string& cloudPath,
+               const std::vector<bool>& inliers);
 
 void deleteDirectoryContents(const std::filesystem::path& dir);
 

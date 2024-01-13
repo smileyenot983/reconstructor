@@ -62,7 +62,13 @@ namespace reconstructor::Core
         // #pragma omp parallel for
         for(const auto& [imgId, imgPath] : imgIds2Paths)
         {
-            auto imgOriginal = reconstructor::Utils::readImg(imgPath, imgMaxSize);
+            cv::Mat imgOriginal;
+            downScaleFactor = reconstructor::Utils::readImg(imgOriginal, imgPath, imgMaxSize);
+
+            PinholeCamera intrinsics(imgOriginal.rows,
+                                     imgOriginal.cols,
+                                     defaultFocalLengthFactor * downScaleFactor);
+            imgIdx2camIntrinsics[imgId] = intrinsics;
 
             cv::Mat imgGray;
             cv::cvtColor(imgOriginal, imgGray, cv::COLOR_RGB2GRAY);
@@ -235,6 +241,10 @@ namespace reconstructor::Core
                     // apply geometric filter and leave only valid matches
                     featFilter->estimateFundamental(featuresMatched1, featuresMatched2, inlierMatchIds);
 
+                    if(inlierMatchIds.size() == 0)
+                    {
+                        continue;
+                    }
 
                     // write only filtered matches
                     int curMatchId = 0;
@@ -329,18 +339,16 @@ namespace reconstructor::Core
         imgIdx2 = featureMatchesVec[0].first.second;
 
         // backproject feature coords(K^{-1}*x)
-        PinholeCamera intrinsics1(imgIdx2imgShape[imgIdx1].first,
-                                  imgIdx2imgShape[imgIdx1].second,
-                                  defaultFocalLengthPx,
-                                  defaultFocalLengthPx);
+        // PinholeCamera intrinsics1(imgIdx2imgShape[imgIdx1].first,
+        //                           imgIdx2imgShape[imgIdx1].second,
+        //                           defaultFocalLengthFactor * downScaleFactor);
 
-        PinholeCamera intrinsics2(imgIdx2imgShape[imgIdx2].first,
-                                  imgIdx2imgShape[imgIdx2].second,
-                                  defaultFocalLengthPx,
-                                  defaultFocalLengthPx);
+        // PinholeCamera intrinsics2(imgIdx2imgShape[imgIdx2].first,
+        //                           imgIdx2imgShape[imgIdx2].second,
+        //                           defaultFocalLengthFactor * downScaleFactor);
 
-        imgIdx2camIntrinsics[imgIdx1] = intrinsics1;
-        imgIdx2camIntrinsics[imgIdx2] = intrinsics2;
+        // imgIdx2camIntrinsics[imgIdx1] = intrinsics1;
+        // imgIdx2camIntrinsics[imgIdx2] = intrinsics2;
 
         // extract matches between given images:
         auto imgPair = std::make_pair(imgIdx1, imgIdx2);
@@ -359,7 +367,10 @@ namespace reconstructor::Core
         
 
         std::vector<bool> inlierMatchIds;
-        auto essentialMat = featFilter->estimateEssential(features1, features2, intrinsics1, intrinsics2, inlierMatchIds);
+        auto essentialMat = featFilter->estimateEssential(features1, features2, 
+                                                          imgIdx2camIntrinsics[imgIdx1],
+                                                          imgIdx2camIntrinsics[imgIdx2],
+                                                          inlierMatchIds);
 
         int essentialInliers = 0;
         for(size_t i = 0; i < inlierMatchIds.size(); ++i)
@@ -375,7 +386,7 @@ namespace reconstructor::Core
         // std::cout << "essentialMat: " << essentialMat << std::endl;
 
         Eigen::Matrix4d relativePose = Eigen::Matrix4d::Identity();
-        essentialMatToPose(essentialMat, features1, features2, intrinsics1, intrinsics2, relativePose);
+        essentialMatToPose(essentialMat, features1, features2, imgIdx2camIntrinsics[imgIdx1], imgIdx2camIntrinsics[imgIdx2], relativePose);
 
         return relativePose;
     }
@@ -750,11 +761,10 @@ namespace reconstructor::Core
         // choose image with highest number of matches to landmarks
         auto registeredImgIdx = landmarkMatches2ImageIdx.rbegin()->second;
 
-        PinholeCamera cameraIntrinsics(imgIdx2imgShape[registeredImgIdx].first,
-                                       imgIdx2imgShape[registeredImgIdx].second,
-                                       defaultFocalLengthPx,
-                                       defaultFocalLengthPx);
-        imgIdx2camIntrinsics[registeredImgIdx] = cameraIntrinsics;
+        // PinholeCamera cameraIntrinsics(imgIdx2imgShape[registeredImgIdx].first,
+        //                                imgIdx2imgShape[registeredImgIdx].second,
+        //                                defaultFocalLengthFactor * downScaleFactor);
+        // imgIdx2camIntrinsics[registeredImgIdx] = cameraIntrinsics;
 
         std::vector<bool> inlierMatches;
         // need [landmark - keypoint] matches for PnP
@@ -835,40 +845,37 @@ namespace reconstructor::Core
         // count inliers after BA for all landmarks:
         int numInliers = 0;
         std::vector<bool> inlierLandmarks;
-        for(const auto& landmark : landmarks)
+        for(auto& landmark : landmarks)
         {
-            bool outlierLandmark = false;
-            for(const auto& triangulatedFeat : landmark.triangulatedFeatures)
-            {
-                auto imgIdx = triangulatedFeat.imgIdx;
-                auto featIdx = triangulatedFeat.featIdx;
-                
-                auto landmarkLocalCoords = getLandmarkLocalCoords(imgIdx, landmark);
-                auto residualTotal = calcProjectionError(imgIdx, featIdx, landmarkLocalCoords);
+            bool inlierLandmark = true;
 
-                if(residualTotal > 3 * maxProjectionError)
+            for(int landFeatId = 0; landFeatId < landmark.triangulatedFeatures.size(); ++landFeatId)
+            {
+                auto imgId = landmark.triangulatedFeatures[landFeatId].imgIdx;
+                auto featId = landmark.triangulatedFeatures[landFeatId].featIdx;
+
+                auto landmarkCoordsLocal = getLandmarkLocalCoords(imgId, landmark);
+                auto residualTotal = calcProjectionError(imgId, featId, landmarkCoordsLocal);
+
+                if(residualTotal > maxProjectionError || 
+                   landmarkCoordsLocal(2) < 0)
                 {
-                    std::cout << "high residual on"
-                                << "| imgIdx: " << imgIdx
-                                << "| featIdx: " << featIdx
-                                << "| landmarkId: " << features[imgIdx][featIdx]->landmarkId
-                                << "| residual: " << residualTotal << std::endl;
-                    // landmarks.erase(landmarks);
-                    outlierLandmark = true;
-                    // break;
-                }
-                if(landmarkLocalCoords(2) < 0)
-                {
-                    std::cout << "negative depth on"
-                                << "| imgIdx: " << imgIdx
-                                << "| featIdx: " << featIdx
-                                << "| landmarkId: " << features[imgIdx][featIdx]->landmarkId
-                                << "| depth: " << landmarkLocalCoords(2) << std::endl;
-                    outlierLandmark = true;
-                    // break;
+                    std::cout << "outlier triang feat: "
+                                << "| imgId: " << imgId
+                                << "| featId: " << featId
+                                << "| landmarkId: " << features[imgId][featId]->landmarkId
+                                << "| residual: " << residualTotal 
+                                << "| depth: " << landmarkCoordsLocal(2) << std::endl;
+
+                    landmark.triangulatedFeatures.erase(landmark.triangulatedFeatures.begin() + landFeatId);
+                    if(landmark.triangulatedFeatures.size() < 2)
+                    {
+                        inlierLandmark = false;
+                    }
                 }
             }
 
+            bool angleCheckPassed = false;
             // calculate angle between all combinations of angles
             for(size_t featId1 = 0; featId1 < landmark.triangulatedFeatures.size(); ++featId1)
             {
@@ -885,9 +892,11 @@ namespace reconstructor::Core
                                                         landmark.triangulatedFeatures[featId2].featIdx,
                                                         landmark);
 
-
-
-                    if(angle < 0.3 * minTriangulationAngle)
+                    if(angle > minTriangulationAngle)
+                    {
+                        angleCheckPassed = true;
+                    }
+                    else
                     {
                         auto featIdx1 = landmark.triangulatedFeatures[featId1].featIdx;
                         auto imgIdx1 = landmark.triangulatedFeatures[featId1].imgIdx;
@@ -902,13 +911,17 @@ namespace reconstructor::Core
                                   << "| imgIdx2: " << landmark.triangulatedFeatures[featId2].imgIdx
                                   << "| featIdx1: " << landmark.triangulatedFeatures[featId1].featIdx
                                   << "| featIdx2: " << landmark.triangulatedFeatures[featId2].featIdx << std::endl;
-
-                        outlierLandmark = true;
                     }
                 }
             }
+            // in case there is at least 1 combination of features producing high triangulation angle
+            //    then keep this landmark, otherwise remove
+            if(!angleCheckPassed)
+            {
+                inlierLandmark = false;
+            }
 
-            inlierLandmarks.push_back(!outlierLandmark);
+            inlierLandmarks.push_back(inlierLandmark);
         }
 
         return inlierLandmarks;
@@ -1007,9 +1020,7 @@ namespace reconstructor::Core
             addNextView();
             timeLogger.endEvent();
 
-            // save cloud before BA
-            std::string cloudPath = "../out_data/clouds/cloud_before_" + std::to_string(i) + ".ply";
-            reconstructor::Utils::saveCloud(landmarks, imgIdx2camPose, cloudPath);
+            
 
             timeLogger.startEvent("global bundle adjustment");
             
@@ -1024,6 +1035,10 @@ namespace reconstructor::Core
                     ++nInliersBefore;
                 }
             }
+
+            // save cloud before BA
+            std::string cloudPath = "../out_data/clouds/cloud_before_" + std::to_string(i) + ".ply";
+            reconstructor::Utils::saveCloud(landmarks, imgIdx2camPose, cloudPath, inliersBefore);
 
             BundleAdjuster bundleAdjuster;
             auto camGlobal2LocalIdx = bundleAdjuster.adjust(features,
@@ -1043,20 +1058,18 @@ namespace reconstructor::Core
                 }
             }
 
+            // remove outlier landmarks
+            removeOutlierLandmarks(inliersAfter);
 
             // save cloud after BA
             cloudPath = "../out_data/clouds/cloud_after_" + std::to_string(i) + ".ply";
-            reconstructor::Utils::saveCloud(landmarks, imgIdx2camPose, cloudPath);
-
-
-            
+            reconstructor::Utils::saveCloud(landmarks, imgIdx2camPose, cloudPath, inliersAfter);
 
             std::cout << "inliers before: " << nInliersBefore 
                       << "inliers after: " << nInliersAfter 
                       << "total landmarks: " << inliersBefore.size() << std::endl;
 
-            // remove outlier landmarks
-            removeOutlierLandmarks(inliersAfter);
+            
 
 
             timeLogger.endEvent();

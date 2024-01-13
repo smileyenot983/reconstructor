@@ -24,7 +24,7 @@ std::unordered_map<int, int> BundleAdjuster::adjust(std::unordered_map<int, std:
 
     double observations[2 * nTotalObservations];
     double extrinsic_params[6 * nTotalCameras];
-    double intrinsic_params[6];
+    double intrinsic_params[6 * nTotalCameras];
     double landmark_params[3 * nTotalLandmarks];
 
     // std::unordered_map<int, int> observation2Camera;
@@ -37,16 +37,16 @@ std::unordered_map<int, int> BundleAdjuster::adjust(std::unordered_map<int, std:
 
     for(const auto& imgIdx : imgIdxOrder)
     {
-        if(imgIdxLocal == 0)
-        {
-            auto intrinsics = imgIdx2camIntrinsics[imgIdx];
-            intrinsic_params[0] = intrinsics.fX;
-            intrinsic_params[1] = intrinsics.fY;
-            intrinsic_params[2] = intrinsics.cX;
-            intrinsic_params[3] = intrinsics.cY;
-            intrinsic_params[4] = intrinsics.k1;
-            intrinsic_params[5] = intrinsics.k2;
-        }
+        // if(imgIdxLocal == 0)
+        // {
+        auto intrinsics = imgIdx2camIntrinsics[imgIdx];
+        intrinsic_params[6 * imgIdxLocal + 0] = intrinsics.fX;
+        intrinsic_params[6 * imgIdxLocal + 1] = intrinsics.fY;
+        intrinsic_params[6 * imgIdxLocal + 2] = intrinsics.cX;
+        intrinsic_params[6 * imgIdxLocal + 3] = intrinsics.cY;
+        intrinsic_params[6 * imgIdxLocal + 4] = intrinsics.k1;
+        intrinsic_params[6 * imgIdxLocal + 5] = intrinsics.k2;
+        // }
         
 
         std::cout << "imgIdx: " << imgIdx << std::endl;
@@ -96,7 +96,7 @@ std::unordered_map<int, int> BundleAdjuster::adjust(std::unordered_map<int, std:
             problem.AddResidualBlock(cost_function,
                                      nullptr,
                                      extrinsic_params + imgIdxLocal * 6,
-                                     intrinsic_params,
+                                     intrinsic_params + imgIdxLocal * 6,
                                      landmark_params + landmarkId * 3);
 
             ++lastObservation;
@@ -107,17 +107,34 @@ std::unordered_map<int, int> BundleAdjuster::adjust(std::unordered_map<int, std:
     double* extrinsic_params0 = extrinsic_params ;
     problem.SetParameterBlockConstant(extrinsic_params0);
 
-    // problem.SetParameterBlockConstant(intrinsic_params);
+    // fix second camera translation(i.e. fix scale of scene)
+    double* extrinsic_params1 = extrinsic_params + 6;
+    problem.SetManifold(extrinsic_params1, new ceres::SubsetManifold(6, {3, 4, 5}));
 
-    if(imgIdxLocal < 5)
+    double* intrinsic_params0 = intrinsic_params;
+    problem.SetManifold(intrinsic_params0, new ceres::SubsetManifold(6, {2,3}));
+
+
+    // fix principal point positions for all intrinsics
+    for(size_t imgId = 0; imgId < imgIdxLocal; ++imgId)
     {
-        problem.SetParameterBlockConstant(intrinsic_params);
+        double* intrinsic_params_i = intrinsic_params + 6 * imgId;
+        // set principal points as fixed
+        problem.SetManifold(intrinsic_params_i, new ceres::SubsetManifold(6, {2,3}));
+        // problem.SetParameterization(intrinsic_params_i, new ceres::SubsetParameterization(6, {2,3}));
     }
+
+    // if(imgIdxLocal < 5)
+    // {
+    //     problem.SetParameterBlockConstant(intrinsic_params);
+    // }
+    // else
+    // {
+
+    // }
     
 
-    // fix second camera translation
-    double* extrinsic_params1 = extrinsic_params + 6;
-    problem.SetParameterization(extrinsic_params1, new ceres::SubsetParameterization(6, {3, 4, 5}));
+
 
 
     ceres::Solver::Options options;
@@ -139,8 +156,6 @@ std::unordered_map<int, int> BundleAdjuster::adjust(std::unordered_map<int, std:
 
     for(const auto& [localIdx, globalIdx] : imgIdxLocal2Global)
     {
-        // std::cout << "localIdx: " << localIdx
-        //           << "| globalIdx: " << globalIdx << std::endl;
 
         // convert angle axis to rotation matrix
         double rotAngle = sqrt(extrinsic_params[6 * localIdx + 0] * extrinsic_params[6 * localIdx + 0]
@@ -158,35 +173,23 @@ std::unordered_map<int, int> BundleAdjuster::adjust(std::unordered_map<int, std:
         camPoseUpdated(0,3) = extrinsic_params[6 * localIdx + 3];
         camPoseUpdated(1,3) = extrinsic_params[6 * localIdx + 4];
         camPoseUpdated(2,3) = extrinsic_params[6 * localIdx + 5];
+        imgIdx2camPose[globalIdx] = camPoseUpdated; 
 
         auto& intrinsics = imgIdx2camIntrinsics[globalIdx];
-        // std::cout << "intrinsics before: " << intrinsics.getMatrixCV() << std::endl;
-        intrinsics.fX = intrinsic_params[0];
-        intrinsics.fY = intrinsic_params[1];
-        intrinsics.cX = intrinsic_params[2];
-        intrinsics.cY = intrinsic_params[3];
-        intrinsics.k1 = intrinsic_params[4];
-        intrinsics.k2 = intrinsic_params[5];
-        // std::cout << "intrinsics after: " << intrinsics.getMatrixCV() << std::endl;
+        std::cout << "intrinsics before: " << intrinsics.getMatrixCV() << std::endl;
+        intrinsics.fX = intrinsic_params[6 * localIdx + 0];
+        intrinsics.fY = intrinsic_params[6 * localIdx + 1];
+        intrinsics.cX = intrinsic_params[6 * localIdx + 2];
+        intrinsics.cY = intrinsic_params[6 * localIdx + 3];
+        intrinsics.k1 = intrinsic_params[6 * localIdx + 4];
+        intrinsics.k2 = intrinsic_params[6 * localIdx + 5];
+        std::cout << "intrinsics after: " << intrinsics.getMatrixCV() << std::endl;
 
-        // std::cout << "pose before: " << imgIdx2camPose[globalIdx] << std::endl;
-        // std::cout << "pose after: " << camPoseUpdated << std::endl;
-
-        imgIdx2camPose[globalIdx] = camPoseUpdated; 
+        
     }
 
     return imgIdxGlobal2Local;
 
 }
-
-// localIdx: 0| globalIdx: 6
-// extrinsic_params[6 * localIdx + 0]: 0| extrinsic_params[6 * localIdx + 1]: 0| extrinsic_params[6 * localIdx + 2]: 0
-// intrinsics before: [231.0522385067047, 0, -80.72576727148521;
-//  0, 136.0222850625297, 266.9464244254605;
-//  0, 0, 1]
-// intrinsics after: [243.7077143848612, 0, -99.59803361272495;
-//  0, 126.9699447609072, 263.3176731222506;
-//  0, 0, 1]
-
 
 }

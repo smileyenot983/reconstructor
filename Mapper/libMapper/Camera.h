@@ -14,6 +14,7 @@ class PinholeCamera
     public:
         PinholeCamera(){}
 
+        // initialization from known focal length(in px)
         PinholeCamera(int height,
                       int width,
                       double fX,
@@ -24,6 +25,33 @@ class PinholeCamera
             cX = width / 2;
             cY = height / 2;
             k1 = k2 = 0;
+        }
+
+        // initialization from unknown focal length
+        PinholeCamera(int height, 
+                      int width)
+        {
+            cX = width / 2;
+            cY = height / 2;
+            k1 = k2 = 0;
+
+            double diag35mm = 36.0 * 36.0 + 24.0 * 24.0;
+            double diagPx = width * width + height * height;
+
+            fX = 50.0 * sqrt(diagPx / diag35mm);
+            fY = fX;
+        }
+
+        // initialization as in colmap
+        PinholeCamera(int height,
+                      int width,
+                      double focalLengthFactor)
+        {
+            cX = width / 2;
+            cY = height / 2;
+            k1 = k2 = 0;
+
+            fY = fX = focalLengthFactor * std::max(height, width);
         }
 
         /*

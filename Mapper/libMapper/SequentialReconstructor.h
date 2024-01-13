@@ -158,14 +158,19 @@ namespace reconstructor::Core
 
         unsigned imgMaxSize = 512;
 
-        double defaultFov = 30.7;
-        double defaultFocalLengthmm = 11.6;
+        double defaultFov = 30.7; // 39.5
+        double defaultFocalLengthmm = 11.6; // 50
 
         double maxProjectionError = 4.0;
         double minTriangulationAngle = 1.0;
 
-        double defaultFocalLengthPx = 2759.48 / 6;
-        // double defaultFocalLengthPx = 1585.5 / 8; 
+        double defaultFocalLengthPxX = 1520.0 / 2;
+        double defaultFocalLengthPxY = 1014 / 2;
+
+        // in colmap, focal length initialized as: focalLength = focalLengthFactor * max(width, height)
+
+        double defaultFocalLengthFactor = 1.2;
+        double downScaleFactor = 1.0;
 
     };
 
