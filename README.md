@@ -1,18 +1,24 @@
 
 # reconstructor
 
-This project is aimed for 3d reconstruction(sparse up-to scale cloud + camera positions) using camera images
+This project is aimed for 3d reconstruction(sparse up-to scale cloud + camera positions) using camera images. The focus of the whole project is on symbiosis between learning-based approaches and time-proven classic algorithms. Inspired by existing open-source approaches: Colmap, AliceVision, OpenMVG.
 
 # reconstructor features
 
 At the moment there is cpp a wrapper over SuperPoint(https://github.com/magicleap/SuperPointPretrainedNetwork), 
 also a cpp wrapper over SuperGlue matcher(https://github.com/magicleap/SuperGluePretrainedNetwork)
 
-# reconstructor results(on images in data folder)
+# reconstructor results:
 
-![herzjesu(left view)](./herzjesu.jpg)
+Fountain dataset. Taken from kaggle's image matching 2023 competition.
 
-![herzjesu(right view)](./herzjesu2.jpg)
+There is also corresponding cloud_fountain.ply file. It might be opened via Meshlab(renders colored pointcloud) or CloudCompare(renders uncolored pointcloud) or any other cloud viewer. Camera poses are visualized as green points.
+
+![Fountain(uncolored, opened in CloudCompare)](./fountain1.jpg)
+
+![Fountaint(colored, opened in Meshlab)](./fountain2.jpg)
+
+
 
 # what is done at the moment
 
@@ -35,7 +41,7 @@ also a cpp wrapper over SuperGlue matcher(https://github.com/magicleap/SuperGlue
 
 # todo later:
 
-1. use monocular depth estimating networks(for example https://github.com/isl-org/MiDaS) to obtain real scale
+1. use monocular depth estimating networks(for example https://github.com/isl-org/MiDaS) to obtain real scale and dense reconstruction
 
 # how to run
 
