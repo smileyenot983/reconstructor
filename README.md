@@ -35,8 +35,10 @@ There is also corresponding cloud_fountain.ply file. It might be opened via Mesh
 
 # todo:
 
-1. image matcher(apply some image retrieval, FAISS, metric learning)
-2. code refactoring + add comments
+1. code refactoring + add comments
+2. Add saving of intermediate steps(feature detection, image matching, feature matching) to avoid their computation in case of changes only in sfm part
+3. image matcher(apply some image retrieval, FAISS, metric learning)
+
 
 
 # todo later:
