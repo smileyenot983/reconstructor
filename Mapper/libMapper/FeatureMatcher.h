@@ -12,20 +12,23 @@ namespace reconstructor::Core
     {
     public:
         FeatureMatcher(const bool featNormalization = false)
-        {}
+        {
+        }
 
         virtual void matchFeatures(const std::vector<FeaturePtr<>> &features1,
                                    const std::vector<FeaturePtr<>> &features2,
-                                   std::map<int, int>& matches,
+                                   std::map<int, int> &matches,
                                    const std::pair<int, int> imgShape1,
                                    const std::pair<int, int> imgShape2) = 0;
-
 
         virtual ~FeatureMatcher() {}
 
     protected:
     };
 
+    /*
+        Simplest approximate nearest neighbor matcher, internally uses opencv implementation
+    */
     class FlannMatcher : public FeatureMatcher
     {
     public:
@@ -33,9 +36,9 @@ namespace reconstructor::Core
 
         void matchFeatures(const std::vector<FeaturePtr<>> &features1,
                            const std::vector<FeaturePtr<>> &features2,
-                           std::map<int, int>& matches,
+                           std::map<int, int> &matches,
                            const std::pair<int, int> imgShape1,
-                            const std::pair<int, int> imgShape2) override;
+                           const std::pair<int, int> imgShape2) override;
 
     private:
         cv::Ptr<cv::DescriptorMatcher> matcher;

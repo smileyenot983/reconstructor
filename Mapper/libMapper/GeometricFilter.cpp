@@ -7,11 +7,11 @@
 using namespace reconstructor::Utils;
 namespace reconstructor::Core
 {
-    Eigen::Matrix3d GeometricFilter::estimateEssential(const std::vector<FeaturePtr<>>& features1,
-                                                    const std::vector<FeaturePtr<>>& features2,
-                                                    const PinholeCamera& intrinsics1,
-                                                    const PinholeCamera& intrinsics2,
-                                                    std::vector<bool>& inlierMatchIds)
+    Eigen::Matrix3d GeometricFilter::estimateEssential(const std::vector<FeaturePtr<>> &features1,
+                                                       const std::vector<FeaturePtr<>> &features2,
+                                                       const PinholeCamera &intrinsics1,
+                                                       const PinholeCamera &intrinsics2,
+                                                       std::vector<bool> &inlierMatchIds)
     {
         auto featuresCV1 = featuresToCvPoints(features1);
         auto featuresCV2 = featuresToCvPoints(features2);
@@ -22,12 +22,6 @@ namespace reconstructor::Core
         auto intrinsicsCV2 = intrinsics2.getMatrixCV();
         auto distortCV2 = intrinsics2.getDistortCV();
 
-        std::cout << " intrinsicsCV1: " << intrinsicsCV1 << std::endl;
-        std::cout << " intrinsicsCV2: " << intrinsicsCV2 << std::endl;
-        std::cout << " distortCV1: " << distortCV1 << std::endl;
-        std::cout << " distortCV2: " << distortCV2 << std::endl;
-        
-
         cv::Mat inliersCV;
         auto essentialMatCV = cv::findEssentialMat(featuresCV1,
                                                    featuresCV2,
@@ -36,32 +30,24 @@ namespace reconstructor::Core
                                                    intrinsicsCV2,
                                                    distortCV2);
 
-        std::cout << "essentialMatCV.type(): " << essentialMatCV.type() << std::endl;
-
         writeInliersToVector(inliersCV, inlierMatchIds);
         auto essentialMatEigen = cvMatToEigen3d(essentialMatCV);
 
         return essentialMatEigen;
     }
 
-    Eigen::Matrix3d GeometricFilter::estimateFundamental(const std::vector<FeaturePtr<>>& features1,
-                                                         const std::vector<FeaturePtr<>>& features2,
-                                                         std::vector<bool>& inlierMatchIds)
+    Eigen::Matrix3d GeometricFilter::estimateFundamental(const std::vector<FeaturePtr<>> &features1,
+                                                         const std::vector<FeaturePtr<>> &features2,
+                                                         std::vector<bool> &inlierMatchIds)
     {
         auto featuresCV1 = featuresToCvPoints(features1);
         auto featuresCV2 = featuresToCvPoints(features2);
 
-        // std::cout << "featuresCV1.size: " << featuresCV1.size() << std::endl;
-        // std::cout << "featuresCV2.size: " << featuresCV2.size() << std::endl;
-
         cv::Mat inliersCV;
         auto fundamentalMat = cv::findFundamentalMat(featuresCV1, featuresCV2, inliersCV);
 
-        // std::cout << "fundamentalMat.size: " << fundamentalMat.size << std::endl;
-        // std::cout << fundamentalMat << std::endl;
-
         // sometimes it fails to estimated fundamental mat
-        if(fundamentalMat.empty())
+        if (fundamentalMat.empty())
         {
             return Eigen::Matrix3d::Zero();
         }
@@ -72,5 +58,5 @@ namespace reconstructor::Core
 
             return eigenMat;
         }
-    }   
+    }
 }

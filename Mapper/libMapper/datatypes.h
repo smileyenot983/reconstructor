@@ -7,7 +7,6 @@
 #include <opencv2/opencv.hpp>
 #include <Eigen/Dense>
 
-
 namespace reconstructor::Core
 {
     template <typename coordType = int>
@@ -17,26 +16,29 @@ namespace reconstructor::Core
 
         FeatCoord(coordType x, coordType y)
             : x(x), y(y)
-        {}
-        virtual ~FeatCoord(){}
+        {
+        }
+        virtual ~FeatCoord() {}
 
         coordType x;
         coordType y;
     };
 
-        /*
-    Adds feature confidence in addition to coords
-    */
+    /*
+Adds feature confidence in addition to coords
+*/
     template <typename coordType = int>
     struct FeatCoordConf : FeatCoord<coordType>
     {
-        FeatCoordConf() 
+        FeatCoordConf()
             : FeatCoord<coordType>()
-        {}
+        {
+        }
 
         FeatCoordConf(const coordType x, const coordType y, const double conf)
             : FeatCoord<coordType>(x, y), conf(conf)
-        {}
+        {
+        }
 
         double conf = 0.01;
     };
@@ -51,15 +53,16 @@ namespace reconstructor::Core
         template <typename InputIterator>
         FeatDesc(InputIterator first, InputIterator last)
             : desc(first, last)
-        {}
+        {
+        }
 
         // calculates l2 norm of descriptor
         double norm()
         {
             double sum = 0.0;
-            for(const auto& descElem : desc)
+            for (const auto &descElem : desc)
             {
-                sum += descElem*descElem;
+                sum += descElem * descElem;
             }
             return sqrt(sum);
         }
@@ -70,7 +73,7 @@ namespace reconstructor::Core
 
     struct FeatColor
     {
-        FeatColor(){}
+        FeatColor() {}
 
         FeatColor(int red, int green, int blue);
 
@@ -87,14 +90,14 @@ namespace reconstructor::Core
     {
         Feature(FeatCoord<coordType> featCoord, FeatDesc featDesc)
             : featCoord(featCoord), featDesc(featDesc)
-        {}
+        {
+        }
         Feature() {}
         virtual ~Feature() {}
 
         FeatCoord<coordType> featCoord;
         FeatDesc featDesc;
         FeatColor featColor;
-        
 
         // id of the landmark, corresponding to feature
         int landmarkId = -1;
@@ -103,7 +106,6 @@ namespace reconstructor::Core
     template <typename coordType = int>
     using FeaturePtr = std::shared_ptr<Feature<coordType>>;
 
-
     /*
     struct for storing feature coords, descriptor and confidence
     */
@@ -111,20 +113,21 @@ namespace reconstructor::Core
     struct FeatureConf : Feature<coordType>
     {
         FeatureConf(FeatCoord<coordType> featCoord, FeatDesc featDesc, double conf)
-        : Feature<coordType>(featCoord, featDesc)
-        , conf(conf) 
-        {}
+            : Feature<coordType>(featCoord, featDesc), conf(conf)
+        {
+        }
 
         FeatureConf(FeatCoordConf<coordType> featCoordConf, FeatDesc featDesc)
-        : Feature<coordType>(static_cast<FeatCoord<>>(featCoordConf), featDesc)
-        , conf(featCoordConf.conf)
-        {}
+            : Feature<coordType>(static_cast<FeatCoord<>>(featCoordConf), featDesc), conf(featCoordConf.conf)
+        {
+        }
 
         FeatureConf(FeatCoord<coordType> featCoord, FeatDesc featDesc)
-        : Feature<coordType>(featCoord, featDesc)
-        {}
+            : Feature<coordType>(featCoord, featDesc)
+        {
+        }
 
-        FeatureConf(){}
+        FeatureConf() {}
 
         double conf;
     };
@@ -132,14 +135,13 @@ namespace reconstructor::Core
     template <typename coordType = int>
     using FeatureConfPtr = std::shared_ptr<FeatureConf<coordType>>;
 
-
     struct TriangulatedFeature
     {
-        TriangulatedFeature(){}
+        TriangulatedFeature() {}
         TriangulatedFeature(const int imgIdx, const int featIdx)
-        : imgIdx(imgIdx)
-        , featIdx(featIdx)
-        {}
+            : imgIdx(imgIdx), featIdx(featIdx)
+        {
+        }
         int imgIdx;
         int featIdx;
     };
@@ -149,15 +151,14 @@ namespace reconstructor::Core
     */
     struct Landmark
     {
-        Landmark(){}
+        Landmark() {}
 
         Landmark(const double x,
                  const double y,
                  const double z)
-        : x(x)
-        , y(y)
-        , z(z)
-        {}
+            : x(x), y(y), z(z)
+        {
+        }
 
         Landmark(const double x,
                  const double y,
@@ -165,15 +166,11 @@ namespace reconstructor::Core
                  const int red,
                  const int green,
                  const int blue)
-        : x(x)
-        , y(y)
-        , z(z)
-        , red(red)
-        , green(green)
-        , blue(blue)
-        {}
+            : x(x), y(y), z(z), red(red), green(green), blue(blue)
+        {
+        }
 
-        std::vector<TriangulatedFeature> triangulatedFeatures; 
+        std::vector<TriangulatedFeature> triangulatedFeatures;
         double x;
         double y;
         double z;
@@ -184,7 +181,6 @@ namespace reconstructor::Core
 
         bool initialLandmark = false;
     };
-
 
     struct Match
     {

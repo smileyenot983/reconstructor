@@ -10,7 +10,7 @@ namespace reconstructor::Core
         return kp1.conf > kp2.conf;
     }
     /*
-    applies non-maxima suppression to remove repeating keypoints
+       Applies non-maxima suppression to remove repeating keypoints
     */
     std::vector<FeatCoordConf<>> nmsFast(std::vector<FeatCoordConf<>> &keypoints,
                                        const int imgHeight,
@@ -165,23 +165,15 @@ namespace reconstructor::Core
             }
         }
 
-        // std::vector<int> filteredIds;
         auto keypointsFiltered = nmsFast(keypointCoordConfs, imgHeight, imgWidth);
 
-        // LOG_MSG("keypointsFiltered.size(): " + std::to_string(keypointsFiltered.size()));
 
         auto keypointsNoBorder = removeBorderKeypoints(keypointsFiltered,
                                                         imgHeight,
                                                         imgWidth,
                                                         borderSize);
 
-        // remove confidence from keypoints as it is not needed now
-        // std::vector<FeatCoord<>> featCoords;
-        // for (const auto &keypoint : keypointsNoBorder)
-        // {
-        //     FeatCoord featCoord(keypoint.x, keypoint.y);
-        //     featCoords.push_back(featCoord);
-        // }
+
 
         return keypointsNoBorder;
     }
@@ -199,13 +191,9 @@ namespace reconstructor::Core
             int xCompressed = keypoint.x / 8;
             int yCompressed = keypoint.y / 8;
 
-            // std::cout << "keypoint.x: " << keypoint.x << std::endl;
-            // std::cout << "xCompressed: " << xCompressed << std::endl;
 
             auto descTensor = descriptors[0][yCompressed][xCompressed].slice(0, 0, 256);
             descTensor = descTensor.contiguous();
-            // https://discuss.pytorch.org/t/how-to-convert-at-tensor-to-std-vector-float/92764
-            // std::vector<float> v(t.data_ptr<float>(), t.data_ptr<float>() + t.numel());
 
             FeatDesc descFloat(descTensor.data_ptr<float>(), descTensor.data_ptr<float>() + descTensor.numel());
 
@@ -268,7 +256,6 @@ namespace reconstructor::Core
 
         for (size_t i = 0; i < keypointsProcessed.size(); ++i)
         {
-            // FeatureConf<> feat(keypointsProcessed[i], descriptorsProcessed[i]);
             FeaturePtr<> feat = std::make_shared<FeatureConf<>>(keypointsProcessed[i],
                                                                 descriptorsProcessed[i]);
             features.push_back(feat);

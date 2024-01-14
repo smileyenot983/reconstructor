@@ -5,8 +5,6 @@
 #include "opencv2/features2d.hpp"
 #include <opencv2/xfeatures2d/nonfree.hpp>
 
-// #include "opencv2/xfeatures2d.hpp"
-
 #include "datatypes.h"
 
 namespace cv
@@ -25,10 +23,6 @@ namespace reconstructor::Core
     class FeatureDetector
     {
     public:
-        // FeatureDetector();
-
-        // virtual void detect(const cv::Mat &img,
-        //                     std::vector<FeatureConf<>> &features) = 0;
 
         virtual void detect(const cv::Mat &img,
                             std::vector<FeaturePtr<>> &features) = 0;
@@ -40,10 +34,9 @@ namespace reconstructor::Core
     };
 
     /*
-    Minimal example of feature detector based on OpenCV
-    for feature detection and descriptions
+        Minimal example of feature detector based on OpenCV
+        for feature detection and descriptions
     */
-    // Elapsed time: 3.96186 s
     class FeatureClassic : public FeatureDetector
     {
     public:

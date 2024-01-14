@@ -19,8 +19,6 @@ namespace reconstructor::Core
         // orbDetector->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
         siftDetector->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
 
-
-        // features.resize(keypoints.size());
         int descSize = descriptors.size[1];
 
         descriptors.convertTo(descriptors, CV_32F);

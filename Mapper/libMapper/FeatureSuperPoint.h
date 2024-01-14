@@ -9,7 +9,6 @@
 
 #include "FeatureDetector.h"
 
-// Elapsed time: 3.96186 s
 namespace reconstructor::Core
 {
     class FeatureSuperPoint : public FeatureDetector
