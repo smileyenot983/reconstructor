@@ -37,15 +37,17 @@ namespace reconstructor::Core
         Fake,
     };
 
-    struct pair_hash {
-    template <class T1, class T2>
-    std::size_t operator () (const std::pair<T1, T2>& p) const {
-        auto h1 = std::hash<T1>{}(p.first);
-        auto h2 = std::hash<T2>{}(p.second);
+    struct pair_hash
+    {
+        template <class T1, class T2>
+        std::size_t operator()(const std::pair<T1, T2> &p) const
+        {
+            auto h1 = std::hash<T1>{}(p.first);
+            auto h2 = std::hash<T2>{}(p.second);
 
-        // Simple hash combining technique (could be more sophisticated)
-        return h1 ^ h2;
-    }
+            // Simple hash combining technique (could be more sophisticated)
+            return h1 ^ h2;
+        }
     };
 
     /*
@@ -58,136 +60,177 @@ namespace reconstructor::Core
     class SequentialReconstructor
     {
     public:
-        SequentialReconstructor(const FeatDetectorType& featDetectorType,
-                                const FeatMatcherType& featMatcherType,
-                                const ImgMatcherType& imgMatcherType);
+        SequentialReconstructor(const FeatDetectorType &featDetectorType,
+                                const FeatMatcherType &featMatcherType,
+                                const ImgMatcherType &imgMatcherType);
 
-        // used for performing feature detection on all images in folder
+        /*
+            Detects keypoints and calculates descriptors
+        */
         void detectFeatures();
 
-        // creates pairs of images for feature matching
+        /*
+            Matches images
+        */
         void matchImages();
 
-        // used for performing feature matching on all images in folder
+        /*
+            Matches features between all images
+        */
         void matchFeatures(bool filter = true);
-        
-        // draws matches between features and saves 
-        void drawFeatMatchesAndSave(const std::string& outFolder);
+
+        /*
+            Draws matches between matched features and saves resulting images
+        */
+        void drawFeatMatchesAndSave(const std::string &outFolder);
 
         // filter matched features via fundamental matrix
+        /*
+            Filter feature matches using epipolar geometry and fundamental matrix
+            For correct matches epipolar constraint should hold:
+            x'^T * F * x = 0
+        */
         void filterFeatMatches();
 
-        // chooses initial image pair to start reconstruction
-        Eigen::Matrix4d chooseInitialPair(int& imgIdx1, int& imgIdx2);
+        /*
+            Chooses initial image pair to start reconstruction,
+            based on total number of matched features
+        */
+        Eigen::Matrix4d chooseInitialPair(int &imgIdx1, int &imgIdx2);
 
-        // triangulation of initial pair 
+        /*
+            Triangulation of initial pair of images
+        */
         void triangulateInitialPair(const int imgIdx1,
                                     const int imgIdx2);
 
-        // triangulate using 2+ matches
+        /*
+            Performs linear triangulation via DLT using matched features
+        */
         void triangulateMultiView(const std::vector<std::pair<int, int>> matchedImgIdFeatId,
                                   bool initialCloud = false);
 
-        // performs linear triangulation, 1) adjusts existing landmarks
-        //                                2) creates new landmarks  
+        /*
+           Performs linear triangulation,
+            1. adds references to landmarks about newly matched features
+            2. creates new landmarks in case there is a match with feature, which has camera pose,
+               but was not triangulated previously
+        */
         void triangulateMatchedLandmarks(const int imgIdx,
-                                         const std::vector<int>& featureIdxs,
-                                         const std::vector<int>& landmarkIdxs);
+                                         const std::vector<int> &featureIdxs,
+                                         const std::vector<int> &landmarkIdxs);
 
+        /*
+        Adds next image into the reconstruction via:
+        1. finds image which has highest number of matches with landmarks(previously triangulated features)
+        2. does solvePnp with RANSAC to estimate camera position
+        3. performs global bundle adjustment
+        */
         void addNextView();
 
-        // registers image via solving pnp
+        /*
+            Calculates camera pose(SE(3)) via solvePnP wrapped by RANSAC
+        */
         Eigen::Matrix4d registerImagePnP(const int imgIdx,
-                              std::vector<int>& featureIdxs,
-                              std::vector<int>& landmarkIdxs);
+                                         std::vector<int> &featureIdxs,
+                                         std::vector<int> &landmarkIdxs);
 
+        /*
+            Performs end2end reconstruction using all images in `imgFolder`
+            saves results(feature matches + reconstructed clouds) in `outFolder`
+        */
+        void reconstruct(const std::string &imgFolder,
+                         const std::string &outFolder);
 
-        // performs end2end reconstruction
-        void reconstruct(const std::string& imgFolder,
-                         const std::string& outFolder);
-
+        /*
+            Calculate the angle between rays coming from camera centers to
+            triangulated landmark
+        */
         double calcTriangulationAngle(int imgIdx1, int imgIdx2,
                                       int featIdx1, int featIdx2,
-                                      const Landmark& landmark);
+                                      const Landmark &landmark);
 
+        /*
+            Transforms landmark into a given camera frame
+        */
         Eigen::Vector3d getLandmarkLocalCoords(int imgIdx,
                                                Landmark landmark);
 
+        /*
+            Calculates the landmark projection error:
+            [u',v',1] = K * [R|t] * X
+        */
         double calcProjectionError(int imgIdx, int featIdx,
-                                    Eigen::Vector3d landmarkCoordsLocal);
+                                   Eigen::Vector3d landmarkCoordsLocal);
 
-        // returns whether corresponding landmarkId is valid or not
+        /*
+            Checks whether landmarks are valid or not,
+            helps with outlier removal
+        */
         std::vector<bool> checkLandmarkValidity();
 
-        // removes invalid landmarks, negative depth || low triangulation angle || high reprojection error
-        void removeOutlierLandmarks(const std::vector<bool>& inlierIds);
-
+        /*
+            Removes all landmarks that were marked as outliers
+        */
+        void removeOutlierLandmarks(const std::vector<bool> &inlierIds);
 
     private:
-
-        // stores pairs of (imgId : imgPath) 
+        // stores pairs of (imgId : imgPath)
         std::unordered_map<int, fs::path> imgIds2Paths;
+
         // stores features per imgId,
         std::unordered_map<int, std::vector<FeaturePtr<>>> features;
 
         // stores triangulated features
         std::vector<Landmark> landmarks;
 
-        // stores camera poses as extrinsics 
+        // stores camera poses as extrinsics
         std::unordered_map<int, Eigen::Matrix4d> imgIdx2camPose;
+
         // stores camera intrinsics
         std::unordered_map<int, PinholeCamera> imgIdx2camIntrinsics;
+
+        // stores whether corresponding imgId was registered
         std::unordered_map<int, bool> registeredImages;
+
         // stores images in reconstruction order
         std::vector<int> imgIdxOrder;
 
         // imgMatches[imgId] - contains vector of all matched image ids
-        std::unordered_map< int, std::vector<int> > imgMatches;
+        std::unordered_map<int, std::vector<int>> imgMatches;
 
         // stores matched feature ids per img pair
-        std::unordered_map< std::pair<int, int>, std::unordered_map<int, int>, pair_hash > featureMatches;
+        std::unordered_map<std::pair<int, int>, std::unordered_map<int, int>, pair_hash> featureMatches;
 
         // stores images sizes(necessary for feature coords normalization on superglue)
         std::unordered_map<int, std::pair<int, int>> imgIdx2imgShape;
 
+        // pointers to the underlying algorithms
         std::unique_ptr<FeatureDetector> featDetector;
         std::unique_ptr<FeatureMatcher> featMatcher;
         std::unique_ptr<ImageMatcher> imgMatcher;
         std::unique_ptr<GeometricFilter> featFilter;
 
+        // class for execution time profiling
         TimeLogger timeLogger;
 
+        // max possible img side
         unsigned imgMaxSize = 512;
 
-        double defaultFov = 30.7; // 39.5
-        double defaultFocalLengthmm = 11.6; // 50
-
-        double maxProjectionError = 4.0;
-        double minTriangulationAngle = 1.0;
-
+        // in case camera calibration is known, use them
+        double defaultFov = 30.7;
+        double defaultFocalLengthmm = 11.6;
         double defaultFocalLengthPxX = 1520.0 / 2;
         double defaultFocalLengthPxY = 1014 / 2;
 
-        // in colmap, focal length initialized as: focalLength = focalLengthFactor * max(width, height)
+        // variables which control whether landmark is inlier/outlier
+        double maxProjectionError = 4.0;
+        double minTriangulationAngle = 1.0;
 
+        // in colmap, focal length initialized as: focalLength = focalLengthFactor * max(width, height)
+        // here same initialization is used(in case intrinsics are unknown)
         double defaultFocalLengthFactor = 1.2;
         double downScaleFactor = 1.0;
     };
 
-
 } // namespace reconstructor::Core
-
-
-// POSSIBLE IMRPOVEMENTS
-
-// before that - run with speed profiling, to find bottlenecks
-
-// ENGINEERING
-// 1. openmp to improve speed 
-// 2. think about used structures, maybe could be improved
-// 3. multithreaded
-
-// RESEARCH
-// 1. improvements from sfm revisited
-// 2. pixel perfect sfm
-// 3. retrieve real scale using depth map estimation
