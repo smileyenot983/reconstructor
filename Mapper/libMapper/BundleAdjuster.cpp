@@ -111,17 +111,12 @@ std::unordered_map<int, int> BundleAdjuster::adjust(std::unordered_map<int, std:
     double* extrinsic_params1 = extrinsic_params + 6;
     problem.SetManifold(extrinsic_params1, new ceres::SubsetManifold(6, {3, 4, 5}));
 
-    double* intrinsic_params0 = intrinsic_params;
-    problem.SetManifold(intrinsic_params0, new ceres::SubsetManifold(6, {2,3}));
-
-
     // fix principal point positions for all intrinsics
     for(size_t imgId = 0; imgId < imgIdxLocal; ++imgId)
     {
         double* intrinsic_params_i = intrinsic_params + 6 * imgId;
         // set principal points as fixed
         problem.SetManifold(intrinsic_params_i, new ceres::SubsetManifold(6, {2,3}));
-        // problem.SetParameterization(intrinsic_params_i, new ceres::SubsetParameterization(6, {2,3}));
     }
 
     // if(imgIdxLocal < 5)

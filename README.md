@@ -31,17 +31,24 @@ There is also corresponding cloud_fountain.ply file. It might be opened via Mesh
 7. 3d visualization of reconstructed cloud(up to scale) + camera positions
 8. incremental reconstruction via pnp + BA
 9. colored pointcloud, saved in *.ply format
+10. use openmp/tbb to make it faster
 
 # todo:
 
 1. image matcher(apply some image retrieval, FAISS, metric learning)
-2. use openmp/tbb to make it faster
-3. code refactoring + add comments
+2. code refactoring + add comments
 
 
 # todo later:
 
 1. use monocular depth estimating networks(for example https://github.com/isl-org/MiDaS) to obtain real scale and dense reconstruction
+
+# some notes on openmp:
+
+It is currently added for feature extraction + feature matching + matches saving. Here are some results on sift + flann for 100 images(duration in seconds):
+
+* Openmp 4 threads + collapse(on double for): (7 + 76 + 171)
+* Without openmp : (7 + 180 + 406)  
 
 # how to run
 

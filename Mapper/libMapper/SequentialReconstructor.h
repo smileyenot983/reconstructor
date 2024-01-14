@@ -14,6 +14,7 @@
 #include "Camera.h"
 #include "TimeLogger.h"
 
+#define MAX_NUM_THREADS 4
 
 namespace fs = std::filesystem;
 
@@ -171,7 +172,6 @@ namespace reconstructor::Core
 
         double defaultFocalLengthFactor = 1.2;
         double downScaleFactor = 1.0;
-
     };
 
 

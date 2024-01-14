@@ -7,10 +7,6 @@
 #include "utils.h"
 #include "BasicFlags.h"
 
-
-// TODO:
-// ADD ANGLE CHECK
-
 namespace fs = std::filesystem;
 namespace reconstructor::Core
 {
@@ -59,9 +55,11 @@ namespace reconstructor::Core
     void SequentialReconstructor::detectFeatures()
     {
         std::cout << "feature detection" << std::endl;
-        // #pragma omp parallel for
-        for(const auto& [imgId, imgPath] : imgIds2Paths)
+        #pragma omp parallel for num_threads(MAX_NUM_THREADS)
+        for(int imgId = 0; imgId < imgIds2Paths.size(); ++imgId)
         {
+            auto imgPath = imgIds2Paths[imgId];
+
             cv::Mat imgOriginal;
             downScaleFactor = reconstructor::Utils::readImg(imgOriginal, imgPath, imgMaxSize);
 
@@ -100,102 +98,97 @@ namespace reconstructor::Core
 
     void SequentialReconstructor::drawFeatMatchesAndSave(const std::string& outFolder)
     {
-        // imgIds2Paths
-
         std::string matchesFolder = outFolder + "/" + "matches";
         fs::create_directories(matchesFolder);
 
-        // #pragma omp parallel for
-        for(const auto& [imgPair, featMap] : featureMatches)
+        #pragma omp parallel for num_threads(MAX_NUM_THREADS) collapse(2)
+        for(size_t imgId1 = 0; imgId1 < imgIds2Paths.size(); ++imgId1)
         {
-            // std::cout << "imgIds2Paths[imgPair.first]" << imgIds2Paths[imgPair.first] << std::endl;
-            // std::cout << "imgIds2Paths[imgPair.seconds]" << imgIds2Paths[imgPair.second] << std::endl;
-
-
-            // read 2 images and merge them into single:
-            auto imgPath1 = imgIds2Paths[imgPair.first];
-            auto imgGray1 = reconstructor::Utils::readGrayImg(imgPath1, imgMaxSize);
-            auto imgPrepared1 = featDetector->prepImg(imgGray1);
-
-            auto imgPath2 = imgIds2Paths[imgPair.second];
-            auto imgGray2 = reconstructor::Utils::readGrayImg(imgPath2, imgMaxSize);
-            auto imgPrepared2 = featDetector->prepImg(imgGray2);
-
-            auto imgType = imgPrepared1.type();
-            cv::Mat imgMerged(std::max(imgPrepared1.rows, imgPrepared2.rows), imgPrepared1.cols + imgPrepared2.cols, imgType);
-
-            // first put values from first image
-            for(size_t row = 0; row < std::min(imgMerged.rows, imgPrepared1.rows); ++row)
+            for(size_t imgId2 = 0; imgId2 < imgIds2Paths.size(); ++imgId2)
             {
-                for(size_t col = 0; col < imgPrepared1.cols; ++ col)
+                auto imgPath1 = imgIds2Paths[imgId1];
+                auto imgGray1 = reconstructor::Utils::readGrayImg(imgPath1, imgMaxSize);
+                auto imgPrepared1 = featDetector->prepImg(imgGray1);   
+
+                auto imgPath2 = imgIds2Paths[imgId2];
+                auto imgGray2 = reconstructor::Utils::readGrayImg(imgPath2, imgMaxSize);
+                auto imgPrepared2 = featDetector->prepImg(imgGray2);         
+
+                auto imgType = imgPrepared1.type();
+                cv::Mat imgMerged(std::max(imgPrepared1.rows, imgPrepared2.rows), imgPrepared1.cols + imgPrepared2.cols, imgType);
+
+                // first put values from first image
+                for(size_t row = 0; row < std::min(imgMerged.rows, imgPrepared1.rows); ++row)
                 {
-                    if(imgType == CV_8U)
+                    for(size_t col = 0; col < imgPrepared1.cols; ++ col)
                     {
-                        imgMerged.at<uchar>(row,col) = imgPrepared1.at<uchar>(row,col);
-                    }
-                    else if(imgType == CV_32F)
-                    {
-                        imgMerged.at<float>(row,col) = 255 * imgPrepared1.at<float>(row,col);
-                    }
-                    else
-                    {
-                        throw std::runtime_error("Unknown image type!");
+                        if(imgType == CV_8U)
+                        {
+                            imgMerged.at<uchar>(row,col) = imgPrepared1.at<uchar>(row,col);
+                        }
+                        else if(imgType == CV_32F)
+                        {
+                            imgMerged.at<float>(row,col) = 255 * imgPrepared1.at<float>(row,col);
+                        }
+                        else
+                        {
+                            throw std::runtime_error("Unknown image type!");
+                        }
                     }
                 }
-            }
-            // now from second:
-            int colOffset = imgPrepared1.cols;
-            for(size_t row = 0; row < std::min(imgMerged.rows, imgPrepared2.rows); ++row)
-            {
-                for(size_t col = 0; col < imgPrepared2.cols; ++col)
+                // now from second:
+                int colOffset = imgPrepared1.cols;
+                for(size_t row = 0; row < std::min(imgMerged.rows, imgPrepared2.rows); ++row)
                 {
-                    if(imgType == CV_8U)
+                    for(size_t col = 0; col < imgPrepared2.cols; ++col)
                     {
-                        imgMerged.at<uchar>(row,col + colOffset) = imgPrepared2.at<uchar>(row,col);
-                    }
-                    else if(imgType == CV_32F)
-                    {
-                        imgMerged.at<float>(row,col + colOffset) = 255 * imgPrepared2.at<float>(row,col);
-                    }
-                    else
-                    {
-                        throw std::runtime_error("Unknown image type!");
+                        if(imgType == CV_8U)
+                        {
+                            imgMerged.at<uchar>(row,col + colOffset) = imgPrepared2.at<uchar>(row,col);
+                        }
+                        else if(imgType == CV_32F)
+                        {
+                            imgMerged.at<float>(row,col + colOffset) = 255 * imgPrepared2.at<float>(row,col);
+                        }
+                        else
+                        {
+                            throw std::runtime_error("Unknown image type!");
+                        }
                     }
                 }
+
+                // extract matched features and draw them:
+                auto featMatches = featureMatches[std::make_pair(imgId1, imgId2)];
+                for(const auto& [featIdx1, featIdx2] : featMatches)
+                {
+                    int x1 = features[imgId1][featIdx1]->featCoord.x;
+                    int y1 = features[imgId1][featIdx1]->featCoord.y;
+
+                    int x2 = features[imgId2][featIdx2]->featCoord.x + colOffset;
+                    int y2 = features[imgId2][featIdx2]->featCoord.y;
+                
+                    cv::line(imgMerged, cv::Point(x1,y1), cv::Point(x2,y2), cv::Scalar(0, 0, 255), 1);
+                }
+
+                // save resulting image
+                auto imgFilename = matchesFolder + "/pair" + std::to_string(imgId1) + std::to_string(imgId2) + ".JPG";
+                cv::imwrite(imgFilename, imgMerged);
             }
-
-            // extract matched features and draw them:
-            auto featMatches = featureMatches[std::make_pair(imgPair.first, imgPair.second)];
-            for(const auto& [featIdx1, featIdx2] : featMatches)
-            {
-                int x1 = features[imgPair.first][featIdx1]->featCoord.x;
-                int y1 = features[imgPair.first][featIdx1]->featCoord.y;
-
-                int x2 = features[imgPair.second][featIdx2]->featCoord.x + colOffset;
-                int y2 = features[imgPair.second][featIdx2]->featCoord.y;
-            
-                cv::line(imgMerged, cv::Point(x1,y1), cv::Point(x2,y2), cv::Scalar(0, 0, 255), 1);
-            }
-
-            // save resulting image
-            auto imgFilename = matchesFolder + "/pair" + std::to_string(imgPair.first) + std::to_string(imgPair.second) + ".JPG";
-            cv::imwrite(imgFilename, imgMerged);
         }
     }
 
     /*matches features between previously matched images*/
     void SequentialReconstructor::matchFeatures(bool filter)
-    {
-        // std::map<std::pair<int, int>, std::vector<Match>> featureMatches;
-        // std::vector<std::vector<FeaturePtr<>>> features;
-        
+    {   
         std::cout << "matching features" << std::endl;
-        // #pragma omp parallel for
-        for(const auto& [imgId1, imgMatches1] : imgMatches)
+        #pragma omp parallel for num_threads(MAX_NUM_THREADS) collapse(2)
+        for(size_t imgId1 = 0; imgId1 < imgMatches.size(); ++imgId1)
         {
-            for(const auto& [imgId2, imgMatches2] : imgMatches)
+            for(size_t imgId2 = 0; imgId2 < imgMatches.size(); ++imgId2)
             {
-                if(imgId1 == imgId2)
+                // skip if same images or images are not matched
+                if(imgId1 == imgId2
+                || std::find(imgMatches[imgId1].begin(), imgMatches[imgId1].end(), imgId2) == imgMatches[imgId1].end())
                 {
                     continue;
                 }
@@ -203,7 +196,6 @@ namespace reconstructor::Core
                 auto features1 = features[imgId1];
                 auto features2 = features[imgId2];
                 std::pair<int, int> curPair(imgId1, imgId2);
-                // std::vector<Match> curMatches;
                 std::map<int, int> curMatches;
 
                 // if this pair's feature were already matched(for features: (1,2)=(2,1) ), don't match again
@@ -266,7 +258,6 @@ namespace reconstructor::Core
                         featureMatches[curPair][featIdx1] = featIdx2;
                     }
 
-                    // featureMatches[curPair] = curMatches;
                 }
 
                 
@@ -954,6 +945,10 @@ namespace reconstructor::Core
     void SequentialReconstructor::reconstruct(const std::string& imgFolder,
                                               const std::string& outFolder)
     {
+        std::cout << "omp_get_max_threads(): " << omp_get_max_threads() << std::endl;
+        std::cout << "omp_get_num_threads(): " << omp_get_num_threads() << std::endl;
+
+
         reconstructor::Utils::deleteDirectoryContents("../out_data/clouds/");
         reconstructor::Utils::deleteDirectoryContents("../out_data/matches");
 
