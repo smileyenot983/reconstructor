@@ -11,105 +11,88 @@
 #include "FeatureDetector.h"
 #include "datatypes.h"
 
-
-
 using namespace reconstructor::Core;
 
 namespace reconstructor::Utils
 {
 
-void visualizeKeypoints(const cv::Mat& img,
-                        const std::vector<reconstructor::Core::FeatCoord<>>& featureCoords,
-                        int imgIdx = 0,
-                        bool saveImage = false);
+    void visualizeKeypoints(const cv::Mat &img,
+                            const std::vector<reconstructor::Core::FeatCoord<>> &featureCoords,
+                            int imgIdx = 0,
+                            bool saveImage = false);
 
-void visualizeKeypoints(const cv::Mat& img,
-                        const std::vector<reconstructor::Core::FeaturePtr<>>& features,
-                        int imgIdx = 0,
-                        bool saveImage = false);
-/*
-Reshapes input image in place, making sure that resulting
-image sides are divisible by 8
-*/
-double reshapeImg(cv::Mat &img,
-                 const int imgMaxSize);
+    void visualizeKeypoints(const cv::Mat &img,
+                            const std::vector<reconstructor::Core::FeaturePtr<>> &features,
+                            int imgIdx = 0,
+                            bool saveImage = false);
+    /*
+    Reshapes input image in place, making sure that resulting
+    image sides are divisible by 8
+    */
+    double reshapeImg(cv::Mat &img,
+                      const int imgMaxSize);
 
-/*
-Reads image in rgb format
-*/
-double readImg(cv::Mat& img,
-                const std::string& imgPath,
-                const int imgMaxSize);
+    /*
+    Reads image in rgb format
+    */
+    double readImg(cv::Mat &img,
+                   const std::string &imgPath,
+                   const int imgMaxSize);
 
-/*
-Reads image in grayscale and reshapes if needed
-*/
-cv::Mat readGrayImg(const std::string& imgPath,
+    /*
+    Reads image in grayscale and reshapes if needed
+    */
+    cv::Mat readGrayImg(const std::string &imgPath,
                         const int imgMaxSize);
 
-/*
-Normalizes feature coordinates, to be in [-coordRange, coordRange]
-*/
-std::vector<FeaturePtr<double>> normalizeFeatCoords(const std::vector<FeaturePtr<>>& features,
-                                                    const int imgHeight,
-                                                    const int imgWidth,
-                                                    const double coordRange = 0.7);
+    /*
+    Normalizes feature coordinates, to be in [-coordRange, coordRange]
+    */
+    std::vector<FeaturePtr<double>> normalizeFeatCoords(const std::vector<FeaturePtr<>> &features,
+                                                        const int imgHeight,
+                                                        const int imgWidth,
+                                                        const double coordRange = 0.7);
 
+    // calculates f_x in px coordinates
+    double focalLengthmmToPx(const double focalLengthmm,
+                             const double imgDim,
+                             const double fovDegrees);
 
-// calculates f_x in px coordinates
-double focalLengthmmToPx(const double focalLengthmm,
-                         const double imgDim,
-                         const double fovDegrees);
+    std::vector<cv::Point2f> featuresToCvPoints(const std::vector<FeaturePtr<>> &features);
 
-Eigen::Matrix3d getIntrinsicsMat(const double focalLengthmm,
-                                 const int imgHeight,
-                                 const int imgWidth,
-                                 const double fovDegrees);
+    cv::Mat eigen3dToCVMat(const Eigen::Matrix3d &eigenMat, int dType = CV_32F);
 
-Eigen::Matrix3d getIntrinsicsMat(const double focalLengthPx,
-                                 const int imgHeight,
-                                 const int imgWidth);
+    Eigen::Matrix3d cvMatToEigen3d(const cv::Mat &cvMat);
 
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Eigen::Vector3d> &landmarks);
 
-std::vector<cv::Point2f> featuresToCvPoints(const std::vector<FeaturePtr<>>& features);
+    // creates cloud from landmarks
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Landmark> &landmarks);
 
-cv::Mat eigen3dToCVMat(const Eigen::Matrix3d& eigenMat, int dType = CV_32F);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cameraPosesToPclCloud(const std::unordered_map<int, Eigen::Matrix4d> &imgIdx2camPose,
+                                                                 int red = 253, int green = 0, int blue = 0);
 
-Eigen::Matrix3d cvMatToEigen3d(const cv::Mat& cvMat);
+    // visualizes pointcloud
+    void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark,
+                   const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera);
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Eigen::Vector3d>& landmarks);
+    void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark1,
+                   const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark2,
+                   const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera1,
+                   const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera2);
 
-// creates cloud from landmarks
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr landmarksToPclCloud(const std::vector<Landmark>& landmarks);
+    void writeInliersToVector(const cv::Mat &inliersCV,
+                              std::vector<bool> &inlierMatchIds);
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr cameraPosesToPclCloud(const std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
-                                                              int red = 253, int green = 0, int blue = 0);
+    void saveCloud(std::vector<Landmark> &landmarks,
+                   std::unordered_map<int, Eigen::Matrix4d> &imgIdx2camPose,
+                   const std::string &cloudPath);
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr vectorToPclCloud(const std::vector<Eigen::Vector3d>& vec,
-                                                        int red, int green, int blue);
+    void saveCloud(std::vector<Landmark> &landmarks,
+                   std::unordered_map<int, Eigen::Matrix4d> &imgIdx2camPose,
+                   const std::string &cloudPath,
+                   const std::vector<bool> &inliers);
 
-// visualizes pointcloud
-void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark,
-               const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera);
-
-void viewCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark1,
-                const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudLandmark2,
-               const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera1, 
-               const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCamera2);
-
-void writeInliersToVector(const cv::Mat& inliersCV,
-                          std::vector<bool>& inlierMatchIds);
-
-
-void saveCloud(std::vector<Landmark>& landmarks,
-               std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
-               const std::string& cloudPath);
-
-void saveCloud(std::vector<Landmark>& landmarks,
-               std::unordered_map<int, Eigen::Matrix4d>& imgIdx2camPose,
-               const std::string& cloudPath,
-               const std::vector<bool>& inliers);
-
-void deleteDirectoryContents(const std::filesystem::path& dir);
+    void deleteDirectoryContents(const std::filesystem::path &dir);
 
 }

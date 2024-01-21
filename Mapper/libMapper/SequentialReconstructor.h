@@ -37,6 +37,17 @@ namespace reconstructor::Core
         Fake,
     };
 
+    /*
+        2 modes for next image ranking:
+            1. MatchTotal - total number of 2d-3d matches
+            2. MatchDensity - uniformness of 2d-3d matches density, inspired by colmap  
+    */
+    enum NextImageRankingMode
+    {
+        MatchTotal,
+        MatchDensity
+    };
+
     struct pair_hash
     {
         template <class T1, class T2>
@@ -119,6 +130,18 @@ namespace reconstructor::Core
         void triangulateMatchedLandmarks(const int imgIdx,
                                          const std::vector<int> &featureIdxs,
                                          const std::vector<int> &landmarkIdxs);
+
+        /*
+            matches features on given images with existing landmarks 
+        */
+        void calc2d3dMatches(const std::set<int>& candidateImgIds,
+                            std::unordered_map<int, std::vector<int>>& imgIdToLandmarkIds,
+                            std::unordered_map<int, std::vector<int>>& imgIdToFeatureIds);
+
+        void rankNextImages(const std::unordered_map<int, std::vector<int>>& imgIdToLandmarkIds,
+                            const std::unordered_map<int, std::vector<int>>& imgIdToFeatureIds,
+                            std::vector<int>& candidateImgIdsSorted);
+
 
         /*
         Adds next image into the reconstruction via:
@@ -211,6 +234,11 @@ namespace reconstructor::Core
         std::unique_ptr<ImageMatcher> imgMatcher;
         std::unique_ptr<GeometricFilter> featFilter;
 
+        NextImageRankingMode nextImageRankingMode = NextImageRankingMode::MatchDensity;
+        
+        // min number of 2d-3d matches to consider image for pnp
+        int min2d3dMatchNum = 30;
+
         // class for execution time profiling
         TimeLogger timeLogger;
 
@@ -220,8 +248,9 @@ namespace reconstructor::Core
         // in case camera calibration is known, use them
         double defaultFov = 30.7;
         double defaultFocalLengthmm = 11.6;
-        double defaultFocalLengthPxX = 1520.0 / 2;
-        double defaultFocalLengthPxY = 1014 / 2;
+        
+        double defaultFocalLengthPxX = -1;
+        double defaultFocalLengthPxY = -1;
 
         // variables which control whether landmark is inlier/outlier
         double maxProjectionError = 4.0;

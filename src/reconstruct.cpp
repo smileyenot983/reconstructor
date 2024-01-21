@@ -9,11 +9,7 @@
 #include <memory>
 #include <chrono>  
 
-
-#include <opencv2/opencv.hpp>
-
 #include <libMapper/SequentialReconstructor.h>
-
 
 int main()
 {

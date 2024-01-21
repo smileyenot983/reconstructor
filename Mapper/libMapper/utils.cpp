@@ -65,6 +65,7 @@ namespace reconstructor::Utils
         {
             if (img.rows > imgMaxSize)
             {
+                auto rowSizeOriginal = img.rows;
                 auto aspectRatio = static_cast<double>(img.cols) / img.rows;
                 auto rowSize = imgMaxSize;
                 auto colSize = rowSize * aspectRatio;
@@ -72,7 +73,7 @@ namespace reconstructor::Utils
 
                 cv::resize(img, img, cv::Size(colSize, rowSize));
 
-                return rowSize / img.rows;
+                return static_cast<double>(rowSize) / rowSizeOriginal;
             }
 
             return 1.0;
@@ -81,6 +82,7 @@ namespace reconstructor::Utils
         {
             if (img.cols > imgMaxSize)
             {
+                auto colSizeOriginal = img.cols;
                 auto aspectRatio = static_cast<double>(img.rows) / img.cols;
                 auto colSize = imgMaxSize;
                 auto rowSize = colSize * aspectRatio;
@@ -88,7 +90,7 @@ namespace reconstructor::Utils
 
                 cv::resize(img, img, cv::Size(colSize, rowSize));
 
-                return colSize / img.cols;
+                return static_cast<double>(colSize) / colSizeOriginal;
             }
 
             return 1.0;

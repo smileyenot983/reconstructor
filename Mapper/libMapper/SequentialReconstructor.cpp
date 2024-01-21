@@ -63,10 +63,28 @@ namespace reconstructor::Core
             cv::Mat imgOriginal;
             downScaleFactor = reconstructor::Utils::readImg(imgOriginal, imgPath, imgMaxSize);
 
-            PinholeCamera intrinsics(imgOriginal.rows,
-                                     imgOriginal.cols,
-                                     defaultFocalLengthFactor * downScaleFactor);
-            imgIdx2camIntrinsics[imgId] = intrinsics;
+            std::cout << "downScaleFactor: " << downScaleFactor << std::endl;
+
+            if(defaultFocalLengthPxX != -1 &&
+               defaultFocalLengthPxY != -1)
+            {
+                PinholeCamera intrinsics(imgOriginal.rows,
+                                         imgOriginal.cols,
+                                         defaultFocalLengthPxX,
+                                         defaultFocalLengthPxY);
+                imgIdx2camIntrinsics[imgId] = intrinsics;
+            
+            }
+            else
+            {
+                PinholeCamera intrinsics(imgOriginal.rows,
+                                         imgOriginal.cols,
+                                         defaultFocalLengthFactor);
+
+                imgIdx2camIntrinsics[imgId] = intrinsics;
+            }
+            
+            
 
             cv::Mat imgGray;
             cv::cvtColor(imgOriginal, imgGray, cv::COLOR_RGB2GRAY);
@@ -619,31 +637,17 @@ namespace reconstructor::Core
         return cameraPose;
     }
 
-    void SequentialReconstructor::addNextView()
+    /*
+        Ranks possible next image candidates for sequential reconstruction  
+    */
+    void SequentialReconstructor::calc2d3dMatches(const std::set<int>& candidateImgIds,
+                                                 std::unordered_map<int, std::vector<int>>& imgIdToLandmarkIds,
+                                                 std::unordered_map<int, std::vector<int>>& imgIdToFeatureIds)
     {
-        // 1. extract matched images ids
-        std::set<int> nextViewCandidates;
-
-        for (const auto &[imgId, imgPath] : imgIds2Paths)
-        {
-            // if not registered -> this is a candidate for registration
-            if (registeredImages.find(imgId) == registeredImages.end())
-            {
-                nextViewCandidates.insert(imgId);
-            }
-        }
-        std::cout << "n views left to reconstruct: " << nextViewCandidates.size() << std::endl;
-
         // sort possible candidates by number of matches with landmarks
         std::map<int, int> landmarkMatches2ImageIdx;
 
-        // stores landmark indices per imgIdx { imgIdx : landmarkIdx }
-        std::unordered_map<int, std::vector<int>> imgIdToLandmarkIds;
-
-        // stores feature corresponding to landmark {imgIdx : featureIdx}
-        std::unordered_map<int, std::vector<int>> imgIdToFeatureIds;
-
-        for (const auto &candidateImgIdx : nextViewCandidates)
+        for (const auto &candidateImgIdx : candidateImgIds)
         {
             // get number features, which were triangulated(became landmark)
             int nTriangulatedFeats = 0;
@@ -669,6 +673,9 @@ namespace reconstructor::Core
                         // find feature in candidateImg which is matched with landmark
                         auto matchedFeatIdx = featMatches.find(featIdx);
 
+                        // there is a 2d-3d match in case:
+                        //  1. candidate img has match with one of landmark's existing 2d features
+                        //  2. this candidate's matched feature was not yet matched with any landmark
                         if (matchedFeatIdx != featMatches.end() && features[candidateImgIdx][matchedFeatIdx->second]->landmarkId == -1)
                         {
                             ++nTriangulatedFeats;
@@ -685,9 +692,105 @@ namespace reconstructor::Core
 
             landmarkMatches2ImageIdx[nTriangulatedFeats] = candidateImgIdx;
         }
+    }
+
+    void SequentialReconstructor::rankNextImages(const std::unordered_map<int, std::vector<int>>& imgIdToLandmarkIds,
+                                                 const std::unordered_map<int, std::vector<int>>& imgIdToFeatureIds,
+                                                 std::vector<int>& candidateImgIdsSorted)
+    {
+        if(nextImageRankingMode == NextImageRankingMode::MatchTotal)
+        {
+            std::map<int, int, std::greater<int>> imgId2NumMatches;
+            for(const auto& [imgId, landmarkIds] : imgIdToLandmarkIds)
+            {
+                imgId2NumMatches[imgId] = landmarkIds.size();
+            }
+
+            for(const auto& [imgId, numMatches] : imgId2NumMatches)
+            {
+                candidateImgIdsSorted.push_back(imgId);
+            }
+        }
+        else if(nextImageRankingMode == NextImageRankingMode::MatchDensity)
+        {
+            // create cells(colmap create a pyramid of cells, i would make single image of cells per imgId for first iteration)
+            // imgMaxSize = 512
+            const int cellSize = 1 << 5; // cells of size 2^5 = 32
+            std::unordered_map<int, Eigen::Matrix<int, cellSize, cellSize>> imgId2projDensity;
+            std::unordered_map<int, int> imgId2Score;
+            std::map<int, int, std::greater<int>> score2imgId;
+
+            for(const auto& [imgId, featIds] : imgIdToFeatureIds)
+            {
+                auto imgShape = imgIdx2imgShape[imgId];
+                auto& projDensity = imgId2projDensity[imgId];
+                projDensity.setZero();
+
+                // iterate over all landmarks:
+                for(const auto& featId : featIds)
+                {
+                    int cellX = cellSize * features[imgId][featId]->featCoord.x / static_cast<double>(imgShape.second); 
+                    int cellY = cellSize * features[imgId][featId]->featCoord.y / static_cast<double>(imgShape.first);
+
+                    projDensity(cellY, cellX) = 1;
+                }
+
+                imgId2Score[imgId] = projDensity.sum();
+
+                score2imgId[projDensity.sum()] = imgId;
+
+                std::cout << "imgId: " << imgId
+                          << "| score: " << imgId2Score[imgId] << std::endl;
+            }
+
+            for(const auto& [score, imgId] : score2imgId)
+            {
+                if(score > min2d3dMatchNum)
+                {
+                    candidateImgIdsSorted.push_back(imgId);
+                }
+                
+            }
+        }
+        else
+        {
+            throw std::runtime_error("Wrong next image ranking mode!");
+        }
+    }
+
+    void SequentialReconstructor::addNextView()
+    {
+        // 1. extract matched images ids
+        std::set<int> nextViewCandidates;
+
+        for (const auto &[imgId, imgPath] : imgIds2Paths)
+        {
+            // if not registered -> this is a candidate for registration
+            if (registeredImages.find(imgId) == registeredImages.end())
+            {
+                nextViewCandidates.insert(imgId);
+            }
+        }
+        std::cout << "n views left to reconstruct: " << nextViewCandidates.size() << std::endl;
+
+        // sorted next image ids 
+        std::vector<int> candidateImgIdsSorted;
+        // stores landmark indices per imgIdx { imgIdx : landmarkIdx }
+        std::unordered_map<int, std::vector<int>> imgIdToLandmarkIds;
+        // stores feature corresponding to landmark {imgIdx : featureIdx}
+        std::unordered_map<int, std::vector<int>> imgIdToFeatureIds;
+
+        calc2d3dMatches(nextViewCandidates,
+                        imgIdToLandmarkIds,
+                        imgIdToFeatureIds);
+
+        rankNextImages(imgIdToLandmarkIds,
+                       imgIdToFeatureIds,
+                       candidateImgIdsSorted);
+
 
         // choose image with highest number of matches to landmarks
-        auto registeredImgIdx = landmarkMatches2ImageIdx.rbegin()->second;
+        auto registeredImgIdx = candidateImgIdsSorted[0];
 
         std::vector<bool> inlierMatches;
         // need [landmark - keypoint] matches for PnP
@@ -783,12 +886,12 @@ namespace reconstructor::Core
                 if (residualTotal > maxProjectionError ||
                     landmarkCoordsLocal(2) < 0)
                 {
-                    std::cout << "outlier triang feat: "
-                              << "| imgId: " << imgId
-                              << "| featId: " << featId
-                              << "| landmarkId: " << features[imgId][featId]->landmarkId
-                              << "| residual: " << residualTotal
-                              << "| depth: " << landmarkCoordsLocal(2) << std::endl;
+                    // std::cout << "outlier triang feat: "
+                    //           << "| imgId: " << imgId
+                    //           << "| featId: " << featId
+                    //           << "| landmarkId: " << features[imgId][featId]->landmarkId
+                    //           << "| residual: " << residualTotal
+                    //           << "| depth: " << landmarkCoordsLocal(2) << std::endl;
 
                     landmark.triangulatedFeatures.erase(landmark.triangulatedFeatures.begin() + landFeatId);
                     if (landmark.triangulatedFeatures.size() < 2)
@@ -825,15 +928,15 @@ namespace reconstructor::Core
                         auto imgIdx1 = landmark.triangulatedFeatures[featId1].imgIdx;
                         auto featIdx2 = landmark.triangulatedFeatures[featId2].featIdx;
                         auto imgIdx2 = landmark.triangulatedFeatures[featId2].imgIdx;
-                        std::cout << "low triangulation angle: " << angle
-                                  << "| landmarkId1: " << features[imgIdx1][featIdx1]->landmarkId
-                                  << "| landmarkId2: " << features[imgIdx2][featIdx2]->landmarkId
-                                  << "| featId1: " << featId1
-                                  << "| featId2: " << featId2
-                                  << "| imgIdx1: " << landmark.triangulatedFeatures[featId1].imgIdx
-                                  << "| imgIdx2: " << landmark.triangulatedFeatures[featId2].imgIdx
-                                  << "| featIdx1: " << landmark.triangulatedFeatures[featId1].featIdx
-                                  << "| featIdx2: " << landmark.triangulatedFeatures[featId2].featIdx << std::endl;
+                        // std::cout << "low triangulation angle: " << angle
+                        //           << "| landmarkId1: " << features[imgIdx1][featIdx1]->landmarkId
+                        //           << "| landmarkId2: " << features[imgIdx2][featIdx2]->landmarkId
+                        //           << "| featId1: " << featId1
+                        //           << "| featId2: " << featId2
+                        //           << "| imgIdx1: " << landmark.triangulatedFeatures[featId1].imgIdx
+                        //           << "| imgIdx2: " << landmark.triangulatedFeatures[featId2].imgIdx
+                        //           << "| featIdx1: " << landmark.triangulatedFeatures[featId1].featIdx
+                        //           << "| featIdx2: " << landmark.triangulatedFeatures[featId2].featIdx << std::endl;
                     }
                 }
             }

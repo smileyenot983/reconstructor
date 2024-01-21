@@ -108,19 +108,39 @@ namespace reconstructor::Core
         for (size_t imgId = 0; imgId < imgIdxLocal; ++imgId)
         {
             double *intrinsic_params_i = intrinsic_params + 6 * imgId;
-            // set principal points as fixed
-            problem.SetManifold(intrinsic_params_i, new ceres::SubsetManifold(6, {2, 3}));
-        }
+        
+            if(imgIdxLocal < 10)
+            {
+                problem.SetParameterBlockConstant(intrinsic_params_i);
+            }
+            else
+            {
+                // set principal points as fixed
+                problem.SetManifold(intrinsic_params_i, new ceres::SubsetManifold(6, {2, 3}));
+                problem.SetParameterUpperBound(intrinsic_params_i, 0, 1000);
+                problem.SetParameterUpperBound(intrinsic_params_i, 1, 1000);
+            }    
 
-        // if(imgIdxLocal < 5)
-        // {
-        //     problem.SetParameterBlockConstant(intrinsic_params);
-        // }
+            // set principal points as fixed
+            // problem.SetManifold(intrinsic_params_i, new ceres::SubsetManifold(6, {2, 3}));
+            // problem.SetParameterUpperBound(intrinsic_params_i, 0, 1000);
+            // problem.SetParameterUpperBound(intrinsic_params_i, 1, 1000);
+            
+        }
 
         ceres::Solver::Options options;
         options.linear_solver_type = ceres::DENSE_SCHUR;
+        options.num_threads = MAX_NUM_THREADS;
         // options.minimizer_progress_to_stdout = true;
-        options.max_num_iterations = 50;
+        if(imgIdxLocal < 10)
+        {
+            options.max_num_iterations = 150;
+        }
+        else
+        {
+            options.max_num_iterations = 50;
+        }
+        
 
         ceres::Solver::Summary summary;
         ceres::Solve(options, &problem, &summary);
